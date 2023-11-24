@@ -1,0 +1,6 @@
+# Completer to add
+https://raw.githubusercontent.com/prompt-toolkit/python-prompt-toolkit/master/examples/prompts/auto-completion/autocompletion-like-readline.py
+https://github.com/prompt-toolkit/python-prompt-toolkit/blob/master/examples/prompts/auto-suggestion.py
+https://raw.githubusercontent.com/prompt-toolkit/python-prompt-toolkit/master/examples/prompts/html-input.py
+https://python-prompt-toolkit.readthedocs.io/en/master/pages/asking_for_input.html
+
