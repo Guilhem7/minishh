@@ -1,6 +1,6 @@
 loot/
-scripts/
-!/scripts/rev.ps1
+scripts/*
+!scripts/rev.ps1
 !scripts/amsi_bypass_step1.ps1
 !scripts/amsi_bypass_step2.ps1
 !scripts/Invoke-ConPtyShell.ps1
