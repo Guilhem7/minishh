@@ -1,4 +1,5 @@
 loot/*
+notes.txt
 scripts/*
 !scripts/amsi_bypass_step1.ps1
 !scripts/amsi_bypass_step2.ps1
