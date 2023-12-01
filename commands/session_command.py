@@ -23,6 +23,7 @@ class SessionCommand(AbstractCommand):
         "close"       : {"shell": ShellTypes, "help": "Close the connection"},
         "download"    : {"shell": ShellTypes, "help": "Download a file",
                                                 "usage": "download <[bold blue]file_path[/bold blue]>"},
+        "exit"        : {"shell": ShellTypes, "help": "Return to the menu"},
         "help"        : {"shell": ShellTypes, "help": "Show this help, or help about a current command",
                                                 "usage": "help ?<[bold yellow]command[/bold yellow]>"},
         "info"        : {"shell": ShellTypes, "help": "Show info about the current session"},
@@ -32,12 +33,13 @@ class SessionCommand(AbstractCommand):
         "scripts"     : {"shell": ShellTypes, "help": "Display available scripts in dedicated folder"},
         "shell"       : {"shell": ShellTypes, "help": "Interact with the underlying connection"},
         "upload"      : {"shell": ShellTypes, "help": "Upload a file in a writable directory",
-                                                "usage": "upload <[bold blue]file_path[/bold blue]> <[bold blue]where[/bold blue]>"},
+                                                "usage": "upload <[bold blue]file_path[/bold blue]> <[bold blue]full_path_destination[/bold blue]>"},
         "upgrade"     : {"shell": [ShellTypes.Basic, ShellTypes.Powershell], "help": "Upgrade your session to a [bold]pty[/bold] (if possible)"},
         }
 
     def __init__(self, session_in_use):
         self.session_in_use = session_in_use
+        self.full_cli = None
         self.init_session()
 
     def init_session(self):
@@ -79,7 +81,7 @@ class SessionCommand(AbstractCommand):
 
     def __create_route(self):
         """Return the name for a route generated randomly"""
-        return ObfUtil.get_random_string(21) + ".log"
+        return ObfUtil.get_random_string(21, ext=".log")
 
     def __can_run(self, cmd):
         """Check if a command can be run in this shelltype"""

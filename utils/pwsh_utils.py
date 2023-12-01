@@ -36,9 +36,10 @@ class ObfUtil:
         return (cipher, key)
 
     @staticmethod
-    def get_random_string(size=32):
+    def get_random_string(size=32, ext=""):
         alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        return ''.join(random.choice(alphabet) for _ in range(size))
+        random_str = ''.join(random.choice(alphabet) for _ in range(size))
+        return random_str + ext
 
     @staticmethod
     def xor_obfuscate(cmd_to_execute):

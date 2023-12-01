@@ -61,8 +61,9 @@ class AbstractCommand(ABC):
         return len(cmd) >= 2  and cmd[0] == '!'
 
     def handle_input(self, cmd):
+        self.full_cli = cmd
         if(self.is_shell_command(cmd)):
-            subprocess.run(cmd[1:], shell = True)
+            subprocess.run(cmd[1:], shell=True)
 
         else:
             method, args = self.parse_command(cmd)
