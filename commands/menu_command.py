@@ -90,16 +90,16 @@ class MenuCommand(AbstractCommand):
 
             else:
                 target_key = MenuCommand.KEYS_UPGRADABLE.get(set_key)
-                AppConfig.set_extra_var(target_key, set_val)
+                AppConfig.set_extra_var(target_key, set_val, section="UserSection", force=True)
                 Printer.log(f"[blue]{target_key}[/blue] is now set to [yellow]{set_val}[/yellow]")
 
         else:
             Printer.err("Missing arguments for set function")
 
     def execute_generate(self, *args):
+        """Generate a payload, see utils/generator/__init__.py for more details"""
         payload = ""
 
-        bypasses_script = list(map(lambda x: x.strip(), AppConfig.get('amsi_bypass_scripts', 'Script').split(',')))
         try:
             inline_payload = self.generator.generate_payload(self.full_cli,
                 ip=AppConfig.get('default_ip_address'),

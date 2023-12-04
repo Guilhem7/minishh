@@ -34,7 +34,7 @@ class Generator:
 
         In case of any missing argument, raise a custom exception containing the error message
         """
-        if("-h" in cli.split() or "--help" in cli.split()):
+        if(cli != None and ("-h" in cli.split() or "--help" in cli.split())):
             self._parser.parser.print_help()
             return ""
 

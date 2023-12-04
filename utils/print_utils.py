@@ -29,7 +29,11 @@ class Printer:
 
     @staticmethod
     def err(m, end="\n"):
-        rp("[red bold][-][/red bold] {}".format(m), end=end, file=sys.stderr)
+        if isinstance(m, Exception):
+            rp("[red bold][-][/red bold] [red]{}[/red]: {}".format(type(m).__name__, m), end=end, file=sys.stderr)
+
+        else:
+            rp("[red bold][-][/red bold] {}".format(m), end=end, file=sys.stderr)
 
     @staticmethod
     def dbg(m, end="\n"):

