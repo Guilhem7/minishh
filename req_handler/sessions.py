@@ -15,6 +15,7 @@ from shell_utils.skeleton_shell import SkeletonShell
 from commands.session_command import SessionCommand
 from config.config import AppConfig
 from prompt_toolkit.formatted_text import ANSI
+from prompt_toolkit.patch_stdout import patch_stdout
 
 class SessionStatus(Enum):
     Uninitialized = auto()
@@ -177,7 +178,8 @@ class Session(SessionUtils):
         self.cmd = ""
         
         while (self.status == SessionStatus.Initialized):
-            self.cmd = self.commands.session.prompt(ANSI(self.prompt))
+            with patch_stdout(raw=True):
+                self.cmd = self.commands.session.prompt(ANSI(self.prompt))
             
             if(self.cmd in Session.EXIT_COMMANDS or self.status != SessionStatus.Initialized):
                 break

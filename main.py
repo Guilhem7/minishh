@@ -10,6 +10,7 @@ from utils.ipaddr import IpAddr
 from config.config import AppConfig, MinishhRequirements, RequirementsError
 from commands.menu_command import MenuCommand
 from prompt_toolkit.formatted_text import ANSI
+from prompt_toolkit.patch_stdout import patch_stdout
 
 class Main:
     """
@@ -106,7 +107,9 @@ class Main:
         cmd = ''
         try:
             while True:
-                cmd = self.commands.session.prompt(ANSI(self._prompt_menu))
+                
+                with patch_stdout(raw=True):
+                    cmd = self.commands.session.prompt(ANSI(self._prompt_menu))
 
                 if cmd == "exit":
                     break

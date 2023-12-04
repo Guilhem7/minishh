@@ -40,12 +40,14 @@ class SessionObserver:
         return conn
 
     def remove_from_readable(self, val):
-        self.readable_list.remove(val)
+        if val in self.readable_list:
+            self.readable_list.remove(val)
 
     def remove_connection(self, sock, with_exit=True):
         self.remove_from_readable(sock)
-        self.connections[sock].close(with_exit)
-        del self.connections[sock]
+        if self.connections.get(sock) is not None:
+            self.connections[sock].close(with_exit)
+            del self.connections[sock]
 
     def empty_readable(self):
         self.readable_list = []
@@ -170,7 +172,7 @@ class ConnectionHandler(Thread):
     def handle_read(self, sock_fd):
         if(sock_fd is self.s):
             conn, addr = sock_fd.accept()
-            Printer.dbg("New Connection from {}:{}".format(addr[0], addr[1]))
+            Printer.crlf().dbg("New Connection from {}:{}".format(addr[0], addr[1]))
 
             potential_session = SessionInit(conn)
             self._observer.add_potential_connection(potential_session)
