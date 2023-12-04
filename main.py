@@ -18,7 +18,7 @@ class Main:
     """
     def __init__(self):
         super().__init__()
-        self._prompt_menu = Printer.format(AppConfig.get("prompt", "Menu")) + " "
+        self._prompt_menu = Printer.format("[{blue}Menu{reset}] ")
         self.commands = MenuCommand(self)
         self.socket_server = None
         self.http_server = None

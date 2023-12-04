@@ -46,8 +46,11 @@ class Generator:
 
         if route is None:
             self._payload = PayloadBuilder.build_for(self._parser.target)
+            self._parser.setval("output", self._payload.default_output)
+        
         else:
             self._payload = PayloadBuilder.build_for("remote" + self._parser.target)
+
 
         if self._payload is None:
             raise BadArgumentProvidedError(f"The target argument is not known: {self._parser.target}")

@@ -28,7 +28,7 @@ class PayloadParser:
         self._parser.add_argument('-t', '--target', default="windows", help='Target to generate a payload for, default: %(default)s, available: linux, windows, powershell')
         self._parser.add_argument('-i', '--ip', help="Ip to use for payload generation")
         self._parser.add_argument('-p', '--port', help="Port to use for payload generation")
-        self._parser.add_argument('-o', '--output', default="show", help="Output to use, infile or show")
+        self._parser.add_argument('-o', '--output', help="Output to use, infile or show", required=False)
         self._parser.add_argument('-e', '--enc', nargs='+', action="extend", help="Encoders to use for the payload (url, base64, base64ps)", required=False)
         self._parser.add_argument('--tpl', default="0", help="Template to use, default %(default)s")
 
