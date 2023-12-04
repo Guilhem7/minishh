@@ -11,6 +11,7 @@ And minishh will load them when needed
 This class can parse your script from the conf and check if they are accessible or not
 """
 import os
+import pyperclip
 from config.config import AppConfig
 from utils.print_utils import Printer
 
@@ -27,6 +28,9 @@ class MinishhUtils:
         or is in the script directory and return its relative path if found
         if the file is not found, then None is returned
         """
+        if filename == '':
+            return None
+
         script_path = AppConfig.get("directory", "Script")
         if os.path.isfile(filename):
             return filename
@@ -79,3 +83,9 @@ class MinishhUtils:
     def recover_scripts(key, section):
         """Just a wrapper above both functions `get_scripts` and `parse_scripts`"""
         return MinishhUtils.parse_scripts(MinishhUtils.get_scripts(key, section))
+
+    @staticmethod
+    def copy(payload):
+        """Allows to copy a payload to clipboard"""
+        pyperclip.copy(payload)
+        Printer.print("[bright_black i]Payload copied to clipboard[/bright_black i]")

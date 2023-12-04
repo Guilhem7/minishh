@@ -85,6 +85,12 @@ class AppConfig:
             cls.set_extra_var(var, val, section=section, force=False)
         return cls.get(var, section)
 
+    @staticmethod
+    def translate_target_to_section(target):
+        if target == "linux":
+            return target.capitalize()
+        return 'Powershell'
+
 class MinishhRequirements:
 
     @staticmethod

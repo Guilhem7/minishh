@@ -11,6 +11,8 @@ class Generator:
     def __init__(self):
         self._parser = PayloadParser()
         self._payload = None
+        self.ip = None
+        self.port = None
 
     def get_encoders(self, encoders, payload):
         """
@@ -50,13 +52,13 @@ class Generator:
         if self._payload is None:
             raise BadArgumentProvidedError(f"The target argument is not known: {self._parser.target}")
 
-        ip = self._parser.ip
-        port = self._parser.port
-        if(ip is None or port is None):
-            raise BadArgumentProvidedError(f"The ip argument or port is incorrect: ip -> {ip}, port -> {port}")
+        self.ip = self._parser.ip
+        self.port = self._parser.port
+        if(self.ip is None or self.port is None):
+            raise BadArgumentProvidedError(f"The ip argument or port is incorrect: ip -> {self.ip}, port -> {self.port}")
 
         tpl = self._parser.tpl
-        self._payload.with_ip(ip).with_port(port).using_template(tpl)
+        self._payload.with_ip(self.ip).with_port(self.port).using_template(tpl)
         if route is not None:
             self._payload.for_route(route)
 
@@ -64,4 +66,21 @@ class Generator:
         return final_payload.get_reverse_shell()
 
     def get_parser_val(self, val):
+        """Wrapper to get the value of a parser"""
         return getattr(self._parser.parsed, val)
+
+    def get_payload_for_type(self, target, tpl="0"):
+        """
+        Return a reverse shell payload for a target type
+        It allows to recover shell for other target than cli
+        This is used when generating a shell for a windows target, the shell stores in file is a powershell rev shell
+        """
+        self._payload = PayloadBuilder.build_for(target).with_ip(self.ip).with_port(self.port).using_template(tpl)
+        return self._payload.get_reverse_shell()
+
+    def get_remote_payload_for_type(self, target, port, route):
+        """
+        Return the remote payload for a type, by giving it the route,
+        the ip has been saved in the first call to generate_payload
+        """
+        return PayloadBuilder.build_for("remote" + target).get_remote_payload(self.ip, port, route)

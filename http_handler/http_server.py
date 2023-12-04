@@ -16,22 +16,29 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
 
     files_to_deliver = {"tmp_routes": {}, "permanent_routes": {}}
 
-    @staticmethod
-    def notify_download(route, filename):
-        HttpDeliveringServer.files_to_deliver["tmp_routes"][route] = filename
+    @classmethod
+    def notify_download(cls, route, filename):
+        cls.files_to_deliver["tmp_routes"][route] = filename
 
-    @staticmethod
-    def remove_file(route):
-        if route in HttpDeliveringServer.files_to_deliver["tmp_routes"]:
-            del HttpDeliveringServer.files_to_deliver["tmp_routes"][route]
+    @classmethod
+    def remove_file(cls, route):
+        if route in cls.files_to_deliver["tmp_routes"]:
+            del cls.files_to_deliver["tmp_routes"][route]
 
-    @staticmethod
-    def init_permanent_route(routes):
-        HttpDeliveringServer.files_to_deliver["permanent_routes"] = routes
+    @classmethod
+    def init_permanent_route(cls, routes):
+        cls.files_to_deliver["permanent_routes"] = routes
 
-    @staticmethod
-    def add_permanent_route(routes, file):
-        HttpDeliveringServer.files_to_deliver["permanent_routes"][routes] = file
+    @classmethod
+    def add_permanent_route(cls, route, file):
+        cls.files_to_deliver["permanent_routes"][route] = file
+
+    @classmethod
+    def get_route_for_script(cls, script_name):
+        for k,v in cls.files_to_deliver["permanent_routes"].items():
+            if v == script_name:
+                return k
+        return None
 
     def do_GET(self):
         filename = None
