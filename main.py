@@ -69,30 +69,26 @@ class Main:
         amsi_bypass_script=amsi.ps1
         AppConfig.get_and_set_if_not_exists("scripts/amsi.ps1", random_route.log, "Routes")
         """
-        HttpDeliveringServer.init_permanent_route({
-          # AppConfig.get("amsi_route1", "Routes")         : AppConfig.get('amsi_step1', 'Script'),
-          # AppConfig.get("amsi_route2", "Routes")         : AppConfig.get('amsi_step2', 'Script')
-        })
+        HttpDeliveringServer.init_permanent_route({})
 
         # Init scripts for windows and linux and create route dynamically if not already set
         all_scripts = []
         all_scripts.extend(MinishhUtils.recover_scripts("amsi_bypass_scripts", "Powershell"))
         all_scripts.extend(MinishhUtils.recover_scripts("on_before_shell", "Powershell"))
         all_scripts.extend(MinishhUtils.recover_scripts("on_receive_shell", "Powershell"))
-        all_scripts.extend(MinishhUtils.recover_scripts("reverse_shell_script", "Powershell"))
-        all_scripts.extend(MinishhUtils.recover_scripts("all_in_one_script", "Powershell"))
-        
+        all_scripts.extend(MinishhUtils.recover_scripts("reverse_shell_script", "Powershell", touch=True))
+        all_scripts.extend(MinishhUtils.recover_scripts("all_in_one_script", "Powershell", touch=True))
+
         all_scripts.extend(MinishhUtils.recover_scripts("on_before_shell", "Linux"))
         all_scripts.extend(MinishhUtils.recover_scripts("on_receive_shell", "Linux"))
-        all_scripts.extend(MinishhUtils.recover_scripts("reverse_shell_script", "Linux"))
-        all_scripts.extend(MinishhUtils.recover_scripts("all_in_one_script", "Linux"))
+        all_scripts.extend(MinishhUtils.recover_scripts("reverse_shell_script", "Linux", touch=True))
+        all_scripts.extend(MinishhUtils.recover_scripts("all_in_one_script", "Linux", touch=True))
 
         for script in all_scripts:
             route = AppConfig.get_and_set_if_not_exists(script, ObfUtil.get_random_string(15, ext='.log'), section="Routes")
             HttpDeliveringServer.add_permanent_route(route, script)
 
         # Init the reverse shell script each times it is launched
-        # self.http_server.prepare_rev_shell_script()
         self.socket_server.set_download_server(self.http_server)
 
     def close_all_sessions(self):

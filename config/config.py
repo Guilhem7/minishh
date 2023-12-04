@@ -50,6 +50,9 @@ class AppConfig:
         if not('UserSection' in cls._SystemConfig.sections()): # Add a custom user section to the config dict if not already present
             cls._SystemConfig.add_section('UserSection')
 
+        if not('Routes' in cls._SystemConfig.sections()):
+            cls._SystemConfig.add_section('Routes')
+
     @classmethod
     def get(cls, var, section="UserSection", default=""):
         """Get a config variable, do not pass an unknown section"""

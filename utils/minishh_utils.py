@@ -11,6 +11,7 @@ And minishh will load them when needed
 This class can parse your script from the conf and check if they are accessible or not
 """
 import os
+from pathlib import Path
 import pyperclip
 from config.config import AppConfig
 from utils.print_utils import Printer
@@ -22,11 +23,13 @@ class MinishhUtils:
     """
 
     @staticmethod
-    def get_file(filename):
+    def get_file(filename, touch=False):
         """
         Checks if the file path gave as arguments is in current path,
         or is in the script directory and return its relative path if found
         if the file is not found, then None is returned
+
+        If touch is set to True, a non existing file will be created
         """
         if filename == '':
             return None
@@ -37,6 +40,11 @@ class MinishhUtils:
 
         script_filename = script_path + "/" + filename
         if os.path.isfile(script_filename):
+            return script_filename
+
+        if touch:
+            Printer.log(f"File [blue g]{script_filename}[/blue g] could not be found, creating it")
+            Path(script_filename).touch()
             return script_filename
 
         Printer.err(f"File not found [blue]{filename}[/blue]")
@@ -59,7 +67,7 @@ class MinishhUtils:
         return scripts
 
     @staticmethod
-    def parse_scripts(script_list):
+    def parse_scripts(script_list, touch=False):
         """
         Parse a list of script, and return a list of relative path to existing one
         Print a message if a script does not exists
@@ -75,14 +83,14 @@ class MinishhUtils:
             return script_list
 
         map_existing_script = filter(None,
-                                map(MinishhUtils.get_file, script_list)
+                                map(lambda x: MinishhUtils.get_file(x, touch=touch), script_list)
                                 ) # Filter script by existsing and remove None
         return list(map_existing_script)
 
     @staticmethod
-    def recover_scripts(key, section):
+    def recover_scripts(key, section, touch=False):
         """Just a wrapper above both functions `get_scripts` and `parse_scripts`"""
-        return MinishhUtils.parse_scripts(MinishhUtils.get_scripts(key, section))
+        return MinishhUtils.parse_scripts(MinishhUtils.get_scripts(key, section), touch=touch)
 
     @staticmethod
     def copy(payload):
