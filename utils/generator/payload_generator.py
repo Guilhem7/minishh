@@ -3,9 +3,9 @@ from .payload import *
 from .decorators import *
 from .exceptions import BadArgumentProvidedError
 
-class Generator:
+class PayloadGenerator:
     """
-    Generator class that can generate different kind of payload from a cli strings
+    PayloadGenerator class that can generate different kind of payload from a cli strings
     It handles initialisation of parser variable
     """
     def __init__(self):

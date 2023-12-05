@@ -8,7 +8,8 @@ from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit import PromptSession
 from commands.toolbar import MinishToolbar
-from utils.generator.payload_generator import Generator
+from utils.generator.payload_generator import PayloadGenerator
+from pyperclip import PyperclipException
 
 class MenuCommand(AbstractCommand):
     """
@@ -34,7 +35,7 @@ class MenuCommand(AbstractCommand):
         """Init this class with a direct link to the main menu class"""
         self.main_menu = main_menu
         self.full_cli = None
-        self.generator = Generator()
+        self.generator = PayloadGenerator()
         self.init_session()
 
     def init_session(self):
@@ -145,6 +146,9 @@ class MenuCommand(AbstractCommand):
                 else:
                     Printer.print(inline_payload)
                     MinishhUtils.copy(inline_payload)
+
+        except PyperclipException:
+            Printer.err("Copy to clipboard failed...")
 
         except Exception as e:
             Printer.err(e)

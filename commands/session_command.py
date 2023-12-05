@@ -13,7 +13,7 @@ from prompt_toolkit.completion import NestedCompleter, PathCompleter, WordComple
 from prompt_toolkit import PromptSession
 from http_handler.http_server import HttpDeliveringServer
 from commands.toolbar import MinishToolbar
-from utils.generator.payload_generator import Generator
+from utils.generator.payload_generator import PayloadGenerator
 
 class SessionCommand(AbstractCommand):
     """
@@ -44,7 +44,7 @@ class SessionCommand(AbstractCommand):
         self.session_in_use = session_in_use
         self.full_cli = None
         self.init_session()
-        self.generator = Generator()
+        self.generator = PayloadGenerator()
 
     def init_session(self):
         """Init the prompt session with  the needed completer"""
@@ -213,9 +213,12 @@ class SessionCommand(AbstractCommand):
 
     def execute_upgrade(self, *args):
         cmdline = PtyUpgrade.get_tty_cmd(self.session_in_use.session_assets.binaries)
+        columns, lines = Term.get_size()
+
         if cmdline is not None:
             if self.shell_type is ShellTypes.Basic:
                 self.command_executor.exec_no_result(cmdline)
+                self.command_executor.exec_no_result(f"tty && which stty && stty rows {lines} columns {columns}")
                 tty = self.command_executor.exec("tty", timeout=1.0, get_all=True)
                 if not(re.match(r".*/dev/.*", tty)):
                     Printer.err("Could not upgrade terminal to [red]tty...[/red]")
@@ -226,7 +229,6 @@ class SessionCommand(AbstractCommand):
 
         elif self.shell_type is ShellTypes.Powershell:
             self.execute_load("Invoke-ConPtyShell.ps1")
-            lines, columns = Term.get_size()
             self.command_executor.exec_no_result(f"Invoke-Test -Rows {lines} -Cols {columns}")
         else:
             Printer.err("Cannot upgrade shell to [red]tty...[/red]")

