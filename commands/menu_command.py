@@ -5,7 +5,7 @@ from utils.print_utils import Printer
 from config.config import AppConfig
 from http_handler.http_server import HttpDeliveringServer
 from prompt_toolkit.shortcuts import CompleteStyle
-from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.completion import WordCompleter, NestedCompleter
 from prompt_toolkit import PromptSession
 from commands.toolbar import MinishToolbar
 from utils.generator.payload_generator import PayloadGenerator
@@ -39,7 +39,25 @@ class MenuCommand(AbstractCommand):
         self.init_session()
 
     def init_session(self):
-        self.session = PromptSession(completer=WordCompleter(list(MenuCommand.COMMANDS.keys())),
+        dictionary_target = {}
+        for k, _ in MenuCommand.COMMANDS.items():
+            if k == "generate":
+                dictionary_target[k] = {
+                    "-h": None,
+                    "-t": WordCompleter(["linux", "powershell", "windows"]),
+                    "-e": WordCompleter(["url", "base64", "base64ps"]),
+                    "-o": WordCompleter(["show", "infile"]),
+                    "--tpl": None
+                    }
+
+            elif k == "help":
+                dictionary_target[k] = WordCompleter(list(MenuCommand.COMMANDS.keys()))
+
+            else:
+                dictionary_target[k] = None
+
+        completer = NestedCompleter.from_nested_dict(dictionary_target)
+        self.session = PromptSession(completer=completer,
                                      complete_style=CompleteStyle.MULTI_COLUMN,
                                      bottom_toolbar=MinishToolbar.get_toolbar,
                                      refresh_interval=MinishToolbar.refresh_interval)
