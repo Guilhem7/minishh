@@ -67,8 +67,8 @@ class Main:
         and bound to the script associated
 
         Example:
-        amsi_bypass_script=amsi.ps1
-        AppConfig.get_and_set_if_not_exists("scripts/amsi.ps1", random_route.log, "Routes")
+         - amsi_bypass_script=amsi.ps1
+         - AppConfig.get_and_set_if_not_exists("scripts/amsi.ps1", random_route.log, "Routes")
         """
         HttpDeliveringServer.init_permanent_route({})
 

@@ -144,8 +144,8 @@ class SessionCommand(AbstractCommand):
                 except Exception:
                     Printer.exception()
 
-                finally:
-                    self.session_in_use.download_server.end_download(route)
+                # finally:
+                #     self.session_in_use.download_server.end_download(route)
 
     def execute_help(self, *args):
         self.print_help_header()
@@ -222,6 +222,7 @@ class SessionCommand(AbstractCommand):
                 tty = self.command_executor.exec("tty", timeout=1.0, get_all=True)
                 if not(re.match(r".*/dev/.*", tty)):
                     Printer.err("Could not upgrade terminal to [red]tty...[/red]")
+
                 else:
                     Printer.msg("Shell succesfully upgraded to [bold yellow]tty[/bold yellow]")
                     self.session_in_use.connection.change_shell(ShellTypes.Pty)
@@ -229,7 +230,7 @@ class SessionCommand(AbstractCommand):
 
         elif self.shell_type is ShellTypes.Powershell:
             self.execute_load("Invoke-ConPtyShell.ps1")
-            self.command_executor.exec_no_result(f"Invoke-Test -Rows {lines} -Cols {columns}")
+            self.command_executor.exec_no_result(f"Invoke-Test -Rows {columns} -Cols {lines}")
         else:
             Printer.err("Cannot upgrade shell to [red]tty...[/red]")
 
@@ -254,8 +255,8 @@ class SessionCommand(AbstractCommand):
                 except Exception as e:
                     Printer.err(e)
 
-                finally:
-                    self.session_in_use.download_server.end_download(route)
+                # finally:
+                #     self.session_in_use.download_server.end_download(route)
 
     def execute_setraw(self, *args):
         self.session_in_use.connection.change_shell(ShellTypes.Pty)

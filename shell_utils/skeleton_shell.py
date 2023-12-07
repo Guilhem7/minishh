@@ -57,10 +57,28 @@ class SkeletonShell:
 
     @staticmethod
     def recover_shell_type_from_prompt(answer):
-        if(re.match(WindowsShellPrompt.PS_PROMPT, answer)):
+        """
+        Try to predict the shell inuse by looking at the prompt
+        ```python
+        >>> prompt_ps = "...\n PS C:\\Users\\svc_example\\Desktop > "
+        >>> prompt_win = "[Microsoft Windows]\nC:\\Users\\svc_example\\Desktop > "
+        >>> prompt_lin = "...$"
+        >>>
+        >>> SkeletonShell.recover_shell_type_from_prompt(prompt_ps)[0]
+        ShellTypes.Powershell
+
+        >>> SkeletonShell.recover_shell_type_from_prompt(prompt_win)[0]
+        ShellTypes.Windows
+        
+        >>> SkeletonShell.recover_shell_type_from_prompt(prompt_lin)[0]
+        ShellTypes.Basic
+        
+        >>> 
+        """
+        if re.search(WindowsShellPrompt.PS_PROMPT, answer):
             return [ShellTypes.Powershell, ShellTypes.Windows, ShellTypes.Basic]
 
-        elif(re.match(WindowsShellPrompt.WIN_PROMPT, answer)):
+        elif re.search(WindowsShellPrompt.WIN_PROMPT, answer):
             return [ShellTypes.Windows, ShellTypes.Powershell, ShellTypes.Basic]
 
         else:
@@ -68,5 +86,5 @@ class SkeletonShell:
 
 
 class WindowsShellPrompt:
-    PS_PROMPT = re.compile(r"PS [A-Z]:\\.*>")
-    WIN_PROMPT = re.compile(r"[A-Z]:\\.*>")
+    PS_PROMPT = re.compile(r"^\s*PS [A-Z]:\\.*>", re.MULTILINE)
+    WIN_PROMPT = re.compile(r"^\s*[A-Z]:\\.*>", re.MULTILINE)

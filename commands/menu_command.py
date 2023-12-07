@@ -131,7 +131,6 @@ class MenuCommand(AbstractCommand):
                 if self.generator.get_parser_val("output") == 'infile':
                     section_target = AppConfig.translate_target_to_section(self.generator.get_parser_val("target").lower())
                     # At this time, we requested an infile generated payload
-                    # Check if on_before_shell is set for the target (not usable with linux by now)
                     script_content = []
                     scripts = MinishhUtils.recover_scripts("on_before_shell", section_target)
                     script_dest = MinishhUtils.recover_scripts("reverse_shell_script", section_target)[0]

