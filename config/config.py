@@ -62,6 +62,13 @@ class AppConfig:
         return default
 
     @classmethod
+    def get_section(cls, section):
+        """Get a config section"""
+        if not cls._SystemConfig.has_section(section):
+            return None
+        return cls._SystemConfig[section]
+
+    @classmethod
     def set_extra_var(cls, var, val, section="UserSection", force=False):
         """
         Set the value 'val' of the variable named 'var' in the config if it does not already exists
@@ -98,13 +105,36 @@ class MinishhRequirements:
 
     @staticmethod
     def check_requirements():
-        if not(os.path.isfile(AppConfig._ConfigurationFile)):
+        if not os.path.isfile(AppConfig._ConfigurationFile):
             raise RequirementsError(f"Cannot find the file {AppConfig._ConfigurationFile}")
 
-        if not(os.path.isdir(AppConfig.get("directory", "Script"))):
+        script_dir = MinishhRequirements.check_existing_section_value("directory", "Script")
+        if not os.path.isdir(script_dir):
             raise RequirementsError("Directory containing script is missing: {}".format(AppConfig.get("directory", "Script")))
 
+        loot_dir = MinishhRequirements.check_existing_section_value("directory", "Download")
+        if not os.path.isdir(loot_dir):
+            raise RequirementsError("Download directory '{}' is not found".format(AppConfig.get("directory", "Download")))
+
+    @staticmethod
+    def check_existing_section_value(name, section):
+        value = MinishhRequirements.check_section(section).get(name)
+        if value is None:
+            raise InvalidConfigurationFile(f"Mandatory value {name} not found in section {section}")
+        return value
+
+    @staticmethod
+    def check_section(section_name):
+        """Return the section in the config if found, else raise InvalidConfigurationFile"""
+        section = AppConfig.get_section(section_name)
+        if section is None:
+            raise InvalidConfigurationFile(f"Missing mandatory section: {section_name} in configuration file")
+        return section
+
 class RequirementsError(Exception):
-    """Error raised when one of the requirement is not satisfied"""
+    """Exception raised when one of the requirement is not satisfied"""
     pass
 
+class InvalidConfigurationFile(Exception):
+    """Exception raised when the config val is missing some required values"""
+    pass

@@ -7,6 +7,12 @@ class PayloadGenerator:
     """
     PayloadGenerator class that can generate different kind of payload from a cli strings
     It handles initialisation of parser variable
+
+    This class is used to generate a payload for some targets
+    It is here to achieve a reverse shell, or load a script in memory
+    for the target wanted. nothing more
+
+    As this class is also a module, it cannot use knowledge of other classes
     """
     def __init__(self):
         self._parser = PayloadParser()
@@ -47,7 +53,7 @@ class PayloadGenerator:
         if route is None:
             self._payload = PayloadBuilder.build_for(self._parser.target)
             self._parser.setval("output", self._payload.default_output)
-        
+
         else:
             self._payload = PayloadBuilder.build_for("remote" + self._parser.target)
 

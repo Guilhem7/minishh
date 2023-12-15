@@ -78,6 +78,9 @@ class MinishhUtils:
         File not found IdontExist
         >>> scripts
         ['scripts/test.ps1', 'scripts/safe.ps1']
+        ```
+
+        When touch is enabled, all non existing scripts will be created
         """
         if not script_list:
             return script_list
@@ -97,3 +100,28 @@ class MinishhUtils:
         """Allows to copy a payload to clipboard"""
         pyperclip.copy(payload)
         Printer.print("[bright_black i]Payload copied to clipboard[/bright_black i]")
+
+    @staticmethod
+    def save_file(filename, content):
+        """
+        Save a file in the loot directory, if the loot directory does not exists creates it
+        Obviously it will overwrite any file
+        This method will save both string or bytes
+        """
+        loot_dir = AppConfig.get("directory", "Download")
+
+        if filename != "":
+            if not os.path.isdir(loot_dir):
+                raise Exception(f"Not a directory: '{loot_dir}'")
+
+            file_path = os.path.join(loot_dir, os.path.basename(filename))
+
+            if isinstance(content, str):
+                with open(file_path, 'w', encoding="utf-8") as file:
+                    file.write(content)
+
+            elif isinstance(content, bytes):
+                with open(file_path, 'wb') as file:
+                    file.write(content)
+
+            Printer.log(f"File saved in [yellow]{file_path}[/yellow]")

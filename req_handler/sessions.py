@@ -25,7 +25,6 @@ class SessionStatus(Enum):
 
 class SessionAssets:
     def __init__(self):
-        self.os = OperatingSystem.Linux
         self.binaries = []
         self.shell_type = None
         self.current_user = ""
@@ -160,6 +159,14 @@ class Session(SessionUtils):
     EXIT_COMMANDS = ["x", "quit", "exit"]
 
     def __init__(self, conn, sess_assets):
+        """
+        self.status : SessionStatus : status of the current session
+        self.session_assets : SessionAssets : Link to the current session attributes
+        self.connection : Connection : Link to the class Connection
+        self.prompt : str : Current prompt of the session
+        self.commands : SessionCommand : Link to the class handling command in this configuration
+        self.download_server : HttpServer : Link to interact with the download server
+        """
         super().__init__(conn)
         self.status = SessionStatus.Initialized
         self.session_assets = sess_assets

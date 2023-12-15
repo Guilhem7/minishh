@@ -1,0 +1,1 @@
+alias os='uname -a'

