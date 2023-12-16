@@ -157,11 +157,11 @@ class MenuCommand(AbstractCommand):
                         port=AppConfig.get('port', 'HttpServer'),
                         route=HttpDeliveringServer.get_route_for_script(script_dest_all))
 
-                    Printer.print(download_payload)
+                    Printer.print(download_payload, colorized=False)
                     MinishhUtils.copy(download_payload)
 
                 else:
-                    Printer.print(inline_payload)
+                    Printer.print(inline_payload, colorized=False)
                     MinishhUtils.copy(inline_payload)
 
         except PyperclipException:

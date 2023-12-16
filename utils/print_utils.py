@@ -100,8 +100,13 @@ class Printer:
             )
 
     @staticmethod
-    def print(val, **kwargs):
-        rp(val, **kwargs)
+    def print(val, colorized=True, **kwargs):
+        """Print to the terminal, with rich or without"""
+        if colorized:
+            rp(val, **kwargs)
+        
+        else:
+            print(val, **kwargs)
 
     @staticmethod
     def table_show(columns_dict, rows, title=""):

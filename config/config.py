@@ -1,38 +1,6 @@
 import os
 from configparser import ConfigParser
 
-class MinishhConfig:
-    """
-    C2Config is a class allowing to recover the configuration
-    of the program from the configuration file
-    """
-
-    def __init__(self, config_file = "config.ini"):
-        self._config_file = config_file
-        self._parser = ConfigParser()
-        self.extra_vars = {}
-
-    def parse_config(self):
-        self._parser.read(self._config_file)
-
-    @property
-    def parser(self):
-        return self._parser
-
-    def get(self, section, val, default=""):
-        res = self._parser[section].get(val)
-        if res is not None:
-            return res
-
-        return default
-
-    def set_extra_var(self, var, val):
-        self.extra_vars[var] = val
-
-    def get_extra_var(self, var):
-        return self.extra_vars.get(var)
-
-
 class AppConfig:
     """
     AppConfig is a class allowing to recover the configuration
@@ -101,6 +69,10 @@ class AppConfig:
 
     @staticmethod
     def translate_target_to_section(target):
+        """
+        Return the target associated to a section
+        translate_target_to_section("windows") ==> Powershell
+        """
         if target == "linux":
             return target.capitalize()
         return 'Powershell'
