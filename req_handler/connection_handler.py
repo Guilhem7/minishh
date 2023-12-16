@@ -128,8 +128,8 @@ class ConnectionHandler(Thread):
 
             self.add_in_readable(self.s)
 
-            Printer.dbg("Listening on port: {}".format(self.port))
-            Printer.dbg("Max connections allowed: {}".format(self.max_conn))
+            Printer.log("Listening on port: {}".format(self.port))
+            Printer.log("Max connections allowed: {}".format(self.max_conn))
             ConnectionHandler.is_listening = True
             self.has_started.set()
             return True

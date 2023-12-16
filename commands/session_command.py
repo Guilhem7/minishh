@@ -11,7 +11,7 @@ from config.config import AppConfig
 from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import NestedCompleter, PathCompleter, WordCompleter
 from prompt_toolkit import PromptSession
-from http_handler.http_server import HttpDeliveringServer
+from http_handler.http_server import HttpDeliveringServer, HttpServer
 from commands.toolbar import MinishToolbar
 from utils.generator.payload_generator import PayloadGenerator
 
@@ -151,13 +151,13 @@ class SessionCommand(AbstractCommand):
                     self.session_in_use.download_server.notify_download(route, script)
                     Printer.log(f"Creating route {route} --> {script}")
                     self.command_executor.load(
-                        self.session_in_use.download_server.create_download_link(route),
+                        HttpServer.create_download_link(route),
                         shell_type = self.primary_shell_type,
                         available_bin = self.session_in_use.session_assets.binaries
                         )
 
-                except Exception:
-                    Printer.exception()
+                except Exception as e:
+                    Printer.err(e)
 
                 # finally:
                 #     self.session_in_use.download_server.end_download(route)
@@ -227,7 +227,7 @@ class SessionCommand(AbstractCommand):
             route = self.__create_random_route()
             HttpDeliveringServer.notify_upload(route, file)
             self.command_executor.download(
-                self.session_in_use.download_server.create_download_link(route),
+                HttpServer.create_download_link(route),
                 file,
                 self.primary_shell_type,
                 self.session_in_use.session_assets.binaries)
@@ -280,7 +280,7 @@ class SessionCommand(AbstractCommand):
                     self.session_in_use.download_server.notify_download(route, filename)
                     Printer.log(f"Creating route {route} --> {filename}")
                     self.command_executor.upload_http(
-                            self.session_in_use.download_server.create_download_link(route),
+                            HttpServer.create_download_link(route),
                             where,
                             self.primary_shell_type,
                             self.session_in_use.session_assets.binaries

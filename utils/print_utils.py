@@ -30,7 +30,7 @@ class Printer:
     @staticmethod
     def err(m, end="\n"):
         if isinstance(m, Exception):
-            rp("[red bold][-][/red bold] [red]{}[/red]: {}".format(type(m).__name__, m), end=end, file=sys.stderr)
+            rp("[red bold][-][/red bold] [red]{}[/red]: [white]{}[/white]".format(type(m).__name__, m), end=end, file=sys.stderr)
 
         else:
             rp("[red bold][-][/red bold] {}".format(m), end=end, file=sys.stderr)
