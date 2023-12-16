@@ -21,7 +21,7 @@ class MinishhConfig:
 
     def get(self, section, val, default=""):
         res = self._parser[section].get(val)
-        if(res is not None):
+        if res is not None:
             return res
 
         return default
@@ -40,17 +40,18 @@ class AppConfig:
     AppConfig shall only be modified by the main thread
     """
 
-    _ConfigurationFile = "config.ini"
-    _SystemConfig = None
+    _SystemConfig = ConfigParser()
+    ConfigFile = "config.ini"
 
     @classmethod
     def init_config(cls):
-        cls._SystemConfig = ConfigParser()
-        cls._SystemConfig.read(cls._ConfigurationFile)
-        if not('UserSection' in cls._SystemConfig.sections()): # Add a custom user section to the config dict if not already present
+        cls._SystemConfig.read(cls.ConfigFile)
+
+        # Add a custom user section to the config dict if not already present
+        if 'UserSection' not in cls._SystemConfig.sections():
             cls._SystemConfig.add_section('UserSection')
 
-        if not('Routes' in cls._SystemConfig.sections()):
+        if 'Routes' not in cls._SystemConfig.sections():
             cls._SystemConfig.add_section('Routes')
 
     @classmethod
@@ -84,7 +85,10 @@ class AppConfig:
         Set a key to a val if this one is not already set
         Anyway, return the value associated to the var after being set
         python:
-        >>> res = AppConfig.get_and_set_if_not_exists("shell_script_route", "/random_route.log", "Route")
+        >>> res = AppConfig.get_and_set_if_not_exists(
+                        "shell_script_route",
+                        "/random_route.log",
+                        "Route")
         >>> res
         '/random_route.log'
         >>> AppConfig.get("shell_script_route", "Route")
@@ -102,22 +106,33 @@ class AppConfig:
         return 'Powershell'
 
 class MinishhRequirements:
+    """
+    Class that check requirement
+    """
 
     @staticmethod
     def check_requirements():
-        if not os.path.isfile(AppConfig._ConfigurationFile):
-            raise RequirementsError(f"Cannot find the file {AppConfig._ConfigurationFile}")
+        """Check some requirements before running mniishh to avoid problems"""
+        if not os.path.isfile(AppConfig.ConfigFile):
+            raise RequirementsError(f"Cannot find the file {AppConfig.ConfigFile}")
 
         script_dir = MinishhRequirements.check_existing_section_value("directory", "Script")
         if not os.path.isdir(script_dir):
-            raise RequirementsError("Directory containing script is missing: {}".format(AppConfig.get("directory", "Script")))
+            raise RequirementsError(f"Directory containing script is missing: {script_dir}")
 
         loot_dir = MinishhRequirements.check_existing_section_value("directory", "Download")
         if not os.path.isdir(loot_dir):
-            raise RequirementsError("Download directory '{}' is not found".format(AppConfig.get("directory", "Download")))
+            raise RequirementsError(f"Download directory '{loot_dir}' is not found")
 
     @staticmethod
     def check_existing_section_value(name, section):
+        """
+        Return the value stores in the config file
+        ```.ini
+        [Section]
+        name=value
+        ```
+        """
         value = MinishhRequirements.check_section(section).get(name)
         if value is None:
             raise InvalidConfigurationFile(f"Mandatory value {name} not found in section {section}")
@@ -128,13 +143,11 @@ class MinishhRequirements:
         """Return the section in the config if found, else raise InvalidConfigurationFile"""
         section = AppConfig.get_section(section_name)
         if section is None:
-            raise InvalidConfigurationFile(f"Missing mandatory section: {section_name} in configuration file")
+            raise InvalidConfigurationFile(f"Missing mandatory section: {section_name} in config")
         return section
 
 class RequirementsError(Exception):
     """Exception raised when one of the requirement is not satisfied"""
-    pass
 
 class InvalidConfigurationFile(Exception):
     """Exception raised when the config val is missing some required values"""
-    pass
