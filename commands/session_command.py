@@ -137,7 +137,8 @@ class SessionCommand(AbstractCommand):
                 self.err(method)
 
     def print_help_header(self):
-        Printer.print("========== [blue]Session [bold]Commands[/blue][/bold] ==========")
+        Printer.print("""========== [blue]Session [bold]Commands[/blue][/bold] ==========
+            run shell command with: !<shell_command>""")
 
     def execute_load(self, *args):
         """Load a script in memory, only available in powershell mode"""

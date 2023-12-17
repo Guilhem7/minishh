@@ -217,13 +217,11 @@ class Session(SessionUtils):
         """Run the default command from config"""
         target_section = AppConfig.translate_target_to_section(self.connection.shell_handler.os)
         if AppConfig.get("auto_upgrade", section=target_section, default='N').upper() == 'Y':
-            Printer.log("auto_upgrade set to true")
-            Printer.log("Upgrading session")
+            Printer.log("auto_upgrade set to true, upgrading session...")
             self.commands.handle_input('upgrade')
 
         script_to_load = MinishhUtils.parse_scripts(AppConfig.get("auto_load_scripts", section=target_section).split(','))
         for script in script_to_load:
-            # TODO set route in a lazy way
             Printer.log(f"Loading script [yellow]{script}[/yellow]")
             self.commands.handle_input(f'load {script}')
 
