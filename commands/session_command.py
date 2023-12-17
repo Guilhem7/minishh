@@ -66,9 +66,9 @@ class SessionCommand(AbstractCommand):
                 dictionary_target[k] = None
 
         completer = NestedCompleter.from_nested_dict(dictionary_target)
-        self.session = PromptSession(completer=completer, 
-                                     complete_style=CompleteStyle.MULTI_COLUMN, 
-                                     bottom_toolbar=MinishToolbar.get_toolbar, 
+        self.session = PromptSession(completer=completer,
+                                     complete_style=CompleteStyle.MULTI_COLUMN,
+                                     bottom_toolbar=MinishToolbar.get_toolbar,
                                      refresh_interval=MinishToolbar.refresh_interval)
 
     @property
@@ -96,7 +96,7 @@ class SessionCommand(AbstractCommand):
         return self.shell_type
 
     def __create_dir_if_not_exists(self, path):
-        if not(os.path.exists(path)):
+        if not os.path.exists(path):
             os.makedirs(path)
 
     def __create_random_route(self):
@@ -106,7 +106,7 @@ class SessionCommand(AbstractCommand):
     def __can_run(self, cmd):
         """Check if a command can be run in this shelltype"""
         info = self.COMMANDS.get(cmd)
-        if(info is not None):
+        if info is not None:
             return self.shell_type in info["shell"]
         return False
 
@@ -122,9 +122,9 @@ class SessionCommand(AbstractCommand):
 
         Printer.err(f"File not found [blue]{filename}[/blue]")
         return None
-    
+
     def handle_input(self, cmd):
-        if(self.is_shell_command(cmd)):
+        if self.is_shell_command(cmd):
             subprocess.run(cmd[1:], shell = True)
 
         else:
@@ -183,7 +183,6 @@ class SessionCommand(AbstractCommand):
         amsi_scripts = MinishhUtils.recover_scripts("amsi_bypass_scripts", "Powershell")
         for script in amsi_scripts:
             script_route = HttpDeliveringServer.get_route_for_script(script)
-            # Emulate payload for remote reverse shell
             payload.append(self.generator.generate_payload("generate -t powershell",
                 ip=AppConfig.get("default_ip_address"),
                 port=AppConfig.get("port", "HttpServer"),
@@ -197,8 +196,8 @@ class SessionCommand(AbstractCommand):
 
     def execute_binaries(self, *args):
         Printer.log("[bold]Binaries[/bold] availables:")
-        for b in self.session_in_use.session_assets.binaries:
-            Printer.pad().log(b)
+        for binary in self.session_in_use.session_assets.binaries:
+            Printer.pad().log(binary)
 
     def execute_close(self, *args):
         self.session_in_use.notify_close()

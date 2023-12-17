@@ -13,6 +13,7 @@ from threading import Thread, Lock
 from req_handler.session_exec import SessionExec
 from shell_utils.skeleton_shell import SkeletonShell
 from commands.session_command import SessionCommand
+from utils.minishh_utils import MinishhUtils
 from config.config import AppConfig
 from prompt_toolkit.formatted_text import ANSI
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -208,8 +209,23 @@ class Session(SessionUtils):
             "Session info")
 
     def notify_close(self):
+        """Notify the observer that the session is closed"""
         for obs in self._observers:
             obs.notify_close(self)
+
+    def run_config_script(self):
+        """Run the default command from config"""
+        target_section = AppConfig.translate_target_to_section(self.connection.shell_handler.os)
+        if AppConfig.get("auto_upgrade", section=target_section, default='N').upper() == 'Y':
+            Printer.log("auto_upgrade set to true")
+            Printer.log("Upgrading session")
+            self.commands.handle_input('upgrade')
+
+        script_to_load = MinishhUtils.parse_scripts(AppConfig.get("auto_load_scripts", section=target_section).split(','))
+        for script in script_to_load:
+            # TODO set route in a lazy way
+            Printer.log(f"Loading script [yellow]{script}[/yellow]")
+            self.commands.handle_input(f'load {script}')
 
     def close(self, with_exit=True):
         try:

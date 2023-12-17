@@ -66,6 +66,8 @@ class SessionObserver:
             self.connections[session.get_connection()].attach(self) # Attaching to observer
             del self.potential_connections[session.get_connection()]
 
+            self.connections[session.get_connection()].run_config_script()
+
         else:
             Printer.err("Session not valid, discarding")
 

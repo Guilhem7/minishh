@@ -12,10 +12,6 @@ class ShellTypes(Enum):
     Windows    = auto()
     Powershell = auto()
 
-class OperatingSystem(Enum):
-    Linux   = auto()
-    Windows = auto()
-
 class Shell:
 
     @staticmethod
@@ -46,7 +42,7 @@ class UnixShell(Shell):
     """UnixShell is an object representing an instance of a shell for Unix-type OS"""
     def __init__(self):
         super().__init__()
-        self.os = OperatingSystem.Linux
+        self.os = "linux"
         self.type = ShellTypes.Basic
 
     def is_writtable_cmd(self):
@@ -77,7 +73,7 @@ class WindowsShell(Shell):
     """WindowsShell is an object representing an instance of a shell for Windows OS"""
     def __init__(self):
         super().__init__()
-        self.os = OperatingSystem.Windows
+        self.os = "windows"
         self.type = ShellTypes.Powershell
 
     def get_input(self):
@@ -150,6 +146,15 @@ class Pty(Shell):
         # super().reset_shell()
         Term.reset()
 
+    @property
+    def os(self):
+        """Return the Operating System associated to the shell"""
+        return self.previous_shell.os
+    
+    @os.setter
+    def os(self, val):
+        self.previous_shell.os = val
+
     def handle_special_cmd(self, cmd):
         """
         If the cmd pressed is CTRL+Z (\x1a) then we background the connection
@@ -173,7 +178,7 @@ class Pty(Shell):
 class PtyShell(UnixShell, Pty):
 
     def __init__(self):
-        UnixShell.__init__(self)
+        # UnixShell.__init__(self)
         Pty.__init__(self)
         self.type = ShellTypes.Pty
 

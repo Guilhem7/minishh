@@ -76,12 +76,10 @@ class Main:
         all_scripts = []
         all_scripts.extend(MinishhUtils.recover_scripts("amsi_bypass_scripts", "Powershell"))
         all_scripts.extend(MinishhUtils.recover_scripts("on_before_shell", "Powershell"))
-        all_scripts.extend(MinishhUtils.recover_scripts("on_receive_shell", "Powershell"))
         all_scripts.extend(MinishhUtils.recover_scripts("reverse_shell_script", "Powershell", touch=True))
         all_scripts.extend(MinishhUtils.recover_scripts("all_in_one_script", "Powershell", touch=True))
 
         all_scripts.extend(MinishhUtils.recover_scripts("on_before_shell", "Linux"))
-        all_scripts.extend(MinishhUtils.recover_scripts("on_receive_shell", "Linux"))
         all_scripts.extend(MinishhUtils.recover_scripts("reverse_shell_script", "Linux", touch=True))
         all_scripts.extend(MinishhUtils.recover_scripts("all_in_one_script", "Linux", touch=True))
 
