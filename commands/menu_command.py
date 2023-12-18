@@ -126,7 +126,7 @@ class MenuCommand(AbstractCommand):
         value = "Y" if int(val[1]) > 0 else "N"
         AppConfig.set_extra_var(
             var=var,
-            val=val[1],
+            val=value,
             section=target_section,
             force=True
             )
