@@ -43,7 +43,7 @@ class AppConfig:
         Set the value 'val' of the variable named 'var' in the config if it does not already exists
         If force is True, then the value overwrite the existing one
         """
-        if(not(var in cls._SystemConfig[section]) or force):
+        if( (var not in cls._SystemConfig[section]) or force):
             cls._SystemConfig.set(section, var, val)
 
     @classmethod
@@ -73,9 +73,13 @@ class AppConfig:
         Return the target associated to a section
         translate_target_to_section("windows") ==> Powershell
         """
-        if target == "linux":
+        if target.lower() == "linux":
             return target.capitalize()
-        return 'Powershell'
+
+        elif target.lower() in ['windows', 'powershell']:
+            return 'Powershell'
+
+        return None
 
 class MinishhRequirements:
     """

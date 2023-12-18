@@ -25,11 +25,14 @@ class MenuCommand(AbstractCommand):
             "sess"     : {"help": "Interact with a session",
                             "usage": "Usage: sess <[bold blue]number[/bold blue]>"},
             "set"      : {"help": "Set a key to a value",
-                            "usage": "set <[bold blue]key[/bold blue]> <[bold yellow]val[/bold yellow]>\nKeys available: ip"},
+                            "usage": "set <[bold blue]key[/bold blue]> <[bold yellow]val[/bold yellow]>\nKeys available: ip, auto_upgrade"},
             "exit"     : {"help": "Exit the program"}
         }
 
-    KEYS_UPGRADABLE = {"ip":"default_ip_address"}
+    KEYS_UPGRADABLE = {
+            "ip"           : "default_ip_address",
+            "auto_upgrade" : "auto_upgrade"
+            }
 
     def __init__(self, main_menu):
         """Init this class with a direct link to the main menu class"""
@@ -63,8 +66,8 @@ class MenuCommand(AbstractCommand):
                                      refresh_interval=MinishToolbar.refresh_interval)
 
     def print_help_header(self):
-        help_banner = "========== [blue]Menu [bold]Commands[/blue][/bold] =========="
-        Printer.print(help_banner)
+        Printer.print("========== [blue]Menu [bold]Commands[/blue][/bold] ==========")
+        Printer.print("[i]run shell command with: ![yellow]<shell_command>[/yellow][/i]")
 
     def execute_help(self, *args):
         self.print_help_header()
@@ -82,7 +85,7 @@ class MenuCommand(AbstractCommand):
 
     def execute_sess(self, *sess_number):
         if(len(sess_number) == 0):
-            Printer.err("Invalid usage for this command")
+            Printer.err("Usage: sess [yellow]<sess_number>[/yellow]")
 
         else:
             if(sess_number[0].isdigit()):
@@ -104,16 +107,51 @@ class MenuCommand(AbstractCommand):
         Printer.pad().log(self.main_menu.socket_server)
         Printer.pad().log(self.main_menu.http_server)
 
+    def __set_ip(self, key, val):
+        """Protected function that set the ip"""
+        AppConfig.set_extra_var(key, val, section="UserSection", force=True)
+
+    def __set_conf_var(self, var, val):
+        """Protected function that will set a conf variable to a value"""
+        if len(val) != 2:
+            Printer.err(f"Usage: set [yellow bold]{var}[/yellow bold] linux/powershell 0/1")
+            return 1
+
+
+        target_section = AppConfig.translate_target_to_section(val[0])
+        if not val[1].isdigit():
+            Printer.err("Value must be an [blue]integer[/blue]: 0 = [red]False[/red], 1 = [green]True[/green]")
+            return 1
+
+        value = "Y" if int(val[1]) > 0 else "N"
+        AppConfig.set_extra_var(
+            var=var,
+            val=val[1],
+            section=target_section,
+            force=True
+            )
+
+        Printer.log(f"{var} is now set to [yellow]{value}[/yellow] in section [blue]{target_section}[/blue]")
+        return 0
+
+
+    def __set_key(self, key, values):
+        """Protected function that forward values to the setter associated"""
+        if key == "default_ip_address":
+            self.__set_ip(key, values[0])
+            Printer.log(f"[blue]{key}[/blue] is now set to [yellow]{values[0]}[/yellow]")
+
+        elif key == "auto_upgrade":
+            self.__set_conf_var(key, values)
+
     def execute_set(self, *values):
-        if len(values) == 2:
-            set_key, set_val = values
-            if MenuCommand.KEYS_UPGRADABLE.get(set_key) is None:
-                Printer.err(f"{set_key} is not known")
+        if len(values) >= 2:
+            target_key = MenuCommand.KEYS_UPGRADABLE.get(values[0])
+            if target_key is None:
+                Printer.err(f"{values[0]} is not known")
 
             else:
-                target_key = MenuCommand.KEYS_UPGRADABLE.get(set_key)
-                AppConfig.set_extra_var(target_key, set_val, section="UserSection", force=True)
-                Printer.log(f"[blue]{target_key}[/blue] is now set to [yellow]{set_val}[/yellow]")
+                self.__set_key(target_key, values[1:])
 
         else:
             Printer.err("Missing arguments for set function")
