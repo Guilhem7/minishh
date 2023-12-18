@@ -126,7 +126,7 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
             route = splited_req[1]
 
         if(int(status_code) == HTTPStatus.OK and verb == "GET"):
-            Printer.log(f'File downloaded successfully from {self.address_string()} -->  [yellow]{route}[/yellow]')
+            Printer.log(f'File downloaded successfully from [blue]{self.address_string()}[/blue] -->  [yellow]{route}[/yellow]')
 
 
 class HttpServer(Thread):

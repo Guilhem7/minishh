@@ -139,7 +139,7 @@ class SessionInit(SessionUtils, Thread):
             first_answer = self.command_executor.exec(SkeletonShell.DUMMY_COMMAND, timeout=0.8, get_all=False)
             if(self.is_session_valid()):
                 shell_type = self.get_shell_type(SkeletonShell.recover_shell_type_from_prompt(first_answer))
-                Printer.msg(f"Identified Shell of type: [bold]{shell_type}[/bold]")
+                Printer.log(f"Identified Shell of type: [bold]{shell_type}[/bold]")
                 self.set_shell_type(shell_type)
                 self.run_default_command(shell_type)
                 self.enumerate_binary(shell_type)
@@ -295,7 +295,7 @@ class Connection:
                 CMD = self.shell_handler.get_input()
                 if(self.is_active):
                     self.conn.send(CMD)
-        
+
         except Exception as e:
             pass
 

@@ -97,10 +97,11 @@ class MenuCommand(AbstractCommand):
                 Printer.err("An integer is required")
 
     def execute_list(self, *args):
+        """List all sessions available"""
         all_sessions = list(self.main_menu.socket_server.get_active_sessions().values())
         Printer.print("Current [bold]sessions:[/bold]")
         for i in range(len(all_sessions)):
-            Printer.pad().print(f" - {i} --> {all_sessions[i]} ({all_sessions[i].session_assets.current_user})")
+            Printer.pad().print(f" - {i} --> {all_sessions[i]} ({all_sessions[i].session_assets.current_user}) (run `[green]sess {i}[/green]` to interact)")
 
     def execute_servers(self, *args):
         Printer.log("Current [blue]servers[/blue]:")

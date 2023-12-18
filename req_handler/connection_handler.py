@@ -60,7 +60,7 @@ class SessionObserver:
 
     def notify(self, session):
         if(session.status == SessionStatus.Initialized):
-            Printer.msg("Session seems valid, adding it")
+            Printer.log("Session seems valid, adding it")
             self.connections[session.get_connection()] = session.build()
             self.connections[session.get_connection()].set_download_server(self.download_server)
             self.connections[session.get_connection()].attach(self) # Attaching to observer
@@ -84,7 +84,7 @@ class ConnectionHandler(Thread):
     """ConnectionHandler is a class handling multiple session (TCP connection)"""
     TIMEOUT = 2
     is_listening = False
-    
+
     def __init__(self):
         super().__init__(name="ConnectionHandlerThread")
         self.port = int(AppConfig.get("listening_port", "Connections"))
@@ -174,7 +174,7 @@ class ConnectionHandler(Thread):
     def handle_read(self, sock_fd):
         if(sock_fd is self.s):
             conn, addr = sock_fd.accept()
-            Printer.crlf().dbg("New Connection from {}:{}".format(addr[0], addr[1]))
+            Printer.crlf().log("New Connection from [blue]{}:{}[/blue]".format(addr[0], addr[1]))
 
             potential_session = SessionInit(conn)
             self._observer.add_potential_connection(potential_session)
