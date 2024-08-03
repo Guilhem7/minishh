@@ -135,6 +135,10 @@ class Powershell(WindowsShell):
         return ('if(Get-Command ' + cmd + ' -errorAction SilentlyContinue){echo "Yes"}', "Yes")
 
     @staticmethod
+    def get_prompt_command(prompt):
+        return f"function prompt{{\"{prompt} \"}}"
+
+    @staticmethod
     def enumerate_binary_command(binaries):
         """
         This functions return the command to enumerate binaries on a target,
@@ -145,11 +149,20 @@ class Powershell(WindowsShell):
         return cmd
 
     @staticmethod
-    def default_command():
+    def _default_command():
         return [
         'function xor($a, $b){$c="";for($i=0;$i -lt $a.Length;$i++){$c += [char]($a[$i] -bxor $b[$i%$b.Length])}return $c;}',
         'function download($file){if(Test-Path "$file"){$bytes = [System.IO.File]::ReadAllBytes("$file");echo ([System.BitConverter]::ToString($bytes)).Replace("-","");}}'
         ]
+
+    @classmethod
+    def default_command(cls):
+        default_commands = cls._default_command()
+        prompt = AppConfig.get("prompt", "Powershell")
+        if prompt:
+            set_ps1 = Powershell.get_prompt_command(prompt)
+            default_commands.append(set_ps1)
+        return default_commands
 
 class Pty(Shell):
     """Class responsible for Pty shell"""
