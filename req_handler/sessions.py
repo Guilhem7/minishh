@@ -38,7 +38,7 @@ class SessionAssets:
 
     def are_available(self, binaries):
         for b in binaries:
-            if not(self.is_available(b)):
+            if not self.is_available(b):
                 Printer.log(f"Executable {b} not available...")
                 return False
         return True

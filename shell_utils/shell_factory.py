@@ -3,8 +3,9 @@ import fcntl
 import sys
 import os
 from enum import Enum, auto
-from utils.print_utils import Printer
+from config.config import AppConfig
 from utils.term_manager import Term
+from utils.print_utils import Printer
 
 class ShellTypes(Enum):
     Basic      = auto()
@@ -32,7 +33,19 @@ class Shell:
 
     @staticmethod
     def default_command():
+        """
+        Return the default command to run on the target
+        """
         return []
+
+    @staticmethod
+    def get_prompt_command(prompt):
+        """
+        Return the command to set the prompt
+        
+        :param prompt: The prompt value to set
+        """
+        return ""
 
     @staticmethod
     def help():
@@ -49,15 +62,29 @@ class UnixShell(Shell):
         return ('[ -w /dev/shm ] && echo "YEP" || echo "NOPE"', "YEP")
 
     @staticmethod
+    def get_prompt_command(prompt):
+        if "'" in prompt:
+            Printer.vlog("The prompt config contains unwanted char: (')")
+        if "\\x1b" in prompt:
+            prompt = prompt.replace("\\x1b", '\\e')
+        return f"export PS1=\"{prompt} \""
+
+    @staticmethod
     def default_command():
         columns, lines = os.get_terminal_size()
-        return [
+        default_commands = [
             "export HISTFILE=/dev/null",
             "export TERM=xterm-256color",
             "alias ll=\"ls -lhas\"",
             "alias c=\"clear\"",
             f"tty && which stty && stty rows {lines} columns {columns}"
         ]
+
+        unix_prompt = AppConfig.get("prompt", "Linux")
+        if unix_prompt:
+            set_ps1 = UnixShell.get_prompt_command(unix_prompt)
+            default_commands.append(set_ps1)
+        return default_commands
 
     @staticmethod
     def enumerate_binary_command(binaries):
@@ -150,7 +177,7 @@ class Pty(Shell):
     def os(self):
         """Return the Operating System associated to the shell"""
         return self.previous_shell.os
-    
+
     @os.setter
     def os(self, val):
         self.previous_shell.os = val
@@ -184,7 +211,6 @@ class PtyShell(UnixShell, Pty):
 
     def __str__(self):
         return "Pseudo TTY shell"
-
 
 class ShellFactory:
 

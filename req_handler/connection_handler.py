@@ -35,7 +35,7 @@ class SessionObserver:
 
     def get_connection(self, sock):
         conn = self.connections.get(sock)
-        if(conn is None):
+        if conn is None:
             conn = self.potential_connections.get(sock)
         return conn
 
@@ -53,7 +53,7 @@ class SessionObserver:
         self.readable_list = []
 
     def get_session(self, index):
-        if(len(self.connections) > index):
+        if len(self.connections) > index:
             return list(self.connections.values())[index]
         else:
             Printer.err("No such session available...")
@@ -172,7 +172,7 @@ class ConnectionHandler(Thread):
 
 
     def handle_read(self, sock_fd):
-        if(sock_fd is self.s):
+        if sock_fd is self.s:
             conn, addr = sock_fd.accept()
             Printer.crlf().log("New Connection from [blue]{}:{}[/blue]".format(addr[0], addr[1]))
 
@@ -182,10 +182,10 @@ class ConnectionHandler(Thread):
             potential_session.attach(self._observer)
             potential_session.start()
 
-        elif(sock_fd in self._observer.readable_list):
+        elif sock_fd in self._observer.readable_list:
             try:
                 data = sock_fd.recv(BUFF_SIZE)
-                if(data):
+                if data:
                     self.ProxyCo.add_msg(self.get_connection(sock_fd), data)
 
                 else:

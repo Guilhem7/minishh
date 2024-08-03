@@ -141,7 +141,7 @@ class SessionCommand(AbstractCommand):
         Printer.print("[i]run shell command with: ![yellow]<shell_command>[/yellow][/i]")
 
     def execute_load(self, *args):
-        """Load a script in memory, only available in powershell mode"""
+        """Load a script in memory"""
         if len(args) != 1:
             Printer.err("Load requires an argument")
         else:
@@ -240,12 +240,17 @@ class SessionCommand(AbstractCommand):
             if self.shell_type is ShellTypes.Basic:
                 self.command_executor.exec_no_result(cmdline)
                 self.command_executor.exec_no_result(f"tty && which stty && stty rows {lines} columns {columns}")
+                self.command_executor.exec_no_result("clear")
                 tty = self.command_executor.exec("tty", timeout=1.0, get_all=True)
                 if not(re.match(r".*/dev/.*", tty)):
+                    Printer.vlog(f"Got answer: {tty}")
                     Printer.err("Could not upgrade terminal to [red]tty...[/red]")
 
                 else:
                     Printer.msg("Shell succesfully upgraded to [bold yellow]tty[/bold yellow]")
+
+                    ### Important by now to run default command before changing shell type
+                    self.session_in_use.run_default_command(self.session_in_use.session_assets.shell_type)
                     self.session_in_use.connection.change_shell(ShellTypes.Pty)
                     self.init_session()
 

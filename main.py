@@ -1,4 +1,5 @@
 """Entry point for the program"""
+import sys
 from time import sleep
 from rich.traceback import install
 from http_handler.http_server import HttpServer, HttpDeliveringServer
@@ -143,6 +144,9 @@ if __name__ == '__main__':
     except RequirementsError as e:
         Printer.err(e)
         exit(1)
+
+    if(len(sys.argv) == 2 and sys.argv[1] in ["-v", "--verbose"]):
+        Printer.verbose = True
 
     menu = Main()
     menu.init_options()

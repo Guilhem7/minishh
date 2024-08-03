@@ -20,7 +20,7 @@ class SessionExec(object):
     def __init__(self, con):
         self.socket = con
         self.answer_queue = Queue()
-        self.maker = CmdMaker()
+        self.maker = CmdMaker(" ")
         self.is_waiting = False
 
     def exec(
@@ -70,7 +70,7 @@ class SessionExec(object):
             else:
                 while True:
                     res += self.answer_queue.get(timeout=timeout)
-
+                    Printer.vlog(f"Queued answer: {res}")
                     if re.match(CmdMaker.PatternForResult, res) is not None:
                         full_res = res.split("=====")[-2].lstrip(';')
                         if not(self.maker.command_origin.strip() in full_res.strip()):
@@ -96,12 +96,13 @@ class SessionExec(object):
 
     def exec_no_result(self, cmd, shell_type=ShellTypes.Basic):
         cmd = self.maker.init_command(cmd).with_shell_type(shell_type).end().get_command()
+        Printer.vlog(f"Running {cmd}")
         self.socket.send(cmd)
 
     def exec_all_no_result(self, list_cmd, shell_type, wait=0):
         for c in list_cmd:
             self.exec_no_result(c, shell_type)
-            if(wait != 0):
+            if wait != 0:
                 time.sleep(wait)
 
     def write_chunk_to_file(self, file, chunk, shell_type, mode):
@@ -113,7 +114,7 @@ class SessionExec(object):
         time.sleep(0.1)
 
     def upload(self, file, where, shell_type):
-        if(not(isfile(file))):
+        if not isfile(file):
             Printer.err(f"File {file} does not exists")
 
         else:
@@ -154,7 +155,6 @@ class SessionExec(object):
         cmd = self.maker.to_b64().get_command()
         file_content = self.exec(cmd, timeout=2, shell_type=shell_type)
         return file_content
-
 
 class CmdMaker:
     """

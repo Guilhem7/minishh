@@ -25,12 +25,13 @@ class MenuCommand(AbstractCommand):
             "sess"     : {"help": "Interact with a session",
                             "usage": "Usage: sess <[bold blue]number[/bold blue]>"},
             "set"      : {"help": "Set a key to a value",
-                            "usage": "set <[bold blue]key[/bold blue]> <[bold yellow]val[/bold yellow]>\nKeys available: ip, auto_upgrade"},
+                            "usage": "set <[bold blue]key[/bold blue]> <[bold yellow]val[/bold yellow]>\nKeys available: ip, port, auto_upgrade"},
             "exit"     : {"help": "Exit the program"}
         }
 
     KEYS_UPGRADABLE = {
             "ip"           : "default_ip_address",
+            "port"         : "default_port",
             "auto_upgrade" : "auto_upgrade"
             }
 
@@ -108,7 +109,7 @@ class MenuCommand(AbstractCommand):
         Printer.pad().log(self.main_menu.socket_server)
         Printer.pad().log(self.main_menu.http_server)
 
-    def __set_ip(self, key, val):
+    def __set_addr(self, key, val):
         """Protected function that set the ip"""
         AppConfig.set_extra_var(key, val, section="UserSection", force=True)
 
@@ -117,7 +118,6 @@ class MenuCommand(AbstractCommand):
         if len(val) != 2:
             Printer.err(f"Usage: set [yellow bold]{var}[/yellow bold] linux/powershell 0/1")
             return 1
-
 
         target_section = AppConfig.translate_target_to_section(val[0])
         if not val[1].isdigit():
@@ -138,8 +138,8 @@ class MenuCommand(AbstractCommand):
 
     def __set_key(self, key, values):
         """Protected function that forward values to the setter associated"""
-        if key == "default_ip_address":
-            self.__set_ip(key, values[0])
+        if(key == "default_ip_address" or key == "default_port"):
+            self.__set_addr(key, values[0])
             Printer.log(f"[blue]{key}[/blue] is now set to [yellow]{values[0]}[/yellow]")
 
         elif key == "auto_upgrade":
@@ -162,9 +162,11 @@ class MenuCommand(AbstractCommand):
         payload = ""
 
         try:
+            port = AppConfig.get('default_port') if AppConfig.get('default_port')\
+                                                 else AppConfig.get('listening_port', 'Connections')
             inline_payload = self.generator.generate_payload(self.full_cli,
                 ip=AppConfig.get('default_ip_address'),
-                port=AppConfig.get('listening_port', 'Connections'))
+                port=port)
 
             if inline_payload != "":
                 if self.generator.get_parser_val("output") == 'infile':
