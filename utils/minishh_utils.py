@@ -110,7 +110,7 @@ class MinishhUtils:
         """
         loot_dir = AppConfig.get("directory", "Download")
 
-        if filename != "":
+        if filename:
             if not os.path.isdir(loot_dir):
                 raise Exception(f"Not a directory: '{loot_dir}'")
 

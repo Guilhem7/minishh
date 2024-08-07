@@ -3,6 +3,7 @@ import random
 import socket
 import select
 import queue
+import time
 import os
 import re
 from enum import Enum, auto
@@ -11,6 +12,7 @@ from utils.print_utils import Printer
 from utils.pwsh_utils import ObfUtil
 from threading import Thread, Lock
 from req_handler.session_exec import SessionExec
+from req_handler.proxy_forwarder import ProxyForwarder
 from shell_utils.skeleton_shell import SkeletonShell
 from commands.session_command import SessionCommand
 from utils.minishh_utils import MinishhUtils
@@ -22,6 +24,7 @@ class SessionStatus(Enum):
     Uninitialized = auto()
     Initialized   = auto()
     Invalid       = auto()
+    Http          = auto()
     Died          = auto()
 
 class SessionAssets:
@@ -106,9 +109,9 @@ class SessionInit(SessionUtils, Thread):
             return
 
         res = self.command_executor.exec(cmd, timeout=2.5, get_all=True)
-        if(res != ""):
+        if res:
             for binary in SkeletonShell.get_useful_binaries(shell_type):
-                if(binary in res):
+                if binary in res:
                     self.session_assets.add_binary(binary)
 
     def get_shell_type(self, shell_type_list):
@@ -135,9 +138,19 @@ class SessionInit(SessionUtils, Thread):
         self.session_assets.set_shell_type(shell_type)
 
     def run(self):
+        """
+        Function to init a session. This part is here to identify the kind of
+        session that we receive. Is it a windows reverse shell or a unix or ...
+
+        Also try to gather basic information, like binaries available and current user.
+        We also need to prevent trying to starting a session from a HTTP request,
+        that is why we sleep before
+        """
         try:
+            host, port = self.get_connection().getpeername()
+            Printer.log("New Connection from [blue]{}:{}[/blue]".format(host, port))
             first_answer = self.command_executor.exec(SkeletonShell.DUMMY_COMMAND, timeout=0.8, get_all=False)
-            if(self.is_session_valid()):
+            if self.is_session_valid():
                 shell_type = self.get_shell_type(SkeletonShell.recover_shell_type_from_prompt(first_answer))
                 Printer.log(f"Identified Shell of type: [bold]{shell_type}[/bold]")
                 self.set_shell_type(shell_type)
@@ -184,11 +197,11 @@ class Session(SessionUtils):
 
     def run(self):
         self.cmd = ""
-        
+
         while (self.status == SessionStatus.Initialized):
             with patch_stdout(raw=True):
                 self.cmd = self.commands.session.prompt(ANSI(self.prompt))
-            
+
             if(self.cmd in Session.EXIT_COMMANDS or self.status != SessionStatus.Initialized):
                 break
 

@@ -162,11 +162,9 @@ class MenuCommand(AbstractCommand):
         payload = ""
 
         try:
-            port = AppConfig.get('default_port') if AppConfig.get('default_port')\
-                                                 else AppConfig.get('listening_port', 'Connections')
             inline_payload = self.generator.generate_payload(self.full_cli,
                 ip=AppConfig.get('default_ip_address'),
-                port=port)
+                port=AppConfig.get("default_port", default=AppConfig.get("listening_port", "Connections")))
 
             if inline_payload != "":
                 if self.generator.get_parser_val("output") == 'infile':
@@ -180,7 +178,7 @@ class MenuCommand(AbstractCommand):
                         route = HttpDeliveringServer.get_route_for_script(script)
                         script_content.append(
                                 self.generator.get_remote_payload_for_type(section_target,
-                                        AppConfig.get('port', 'HttpServer'),
+                                        AppConfig.get("default_port", default=AppConfig.get("listening_port", "Connections")),
                                             route)
                                 )
 
@@ -195,7 +193,7 @@ class MenuCommand(AbstractCommand):
 
                     download_payload = self.generator.generate_payload(self.full_cli,
                         ip=AppConfig.get('default_ip_address'),
-                        port=AppConfig.get('port', 'HttpServer'),
+                        port=AppConfig.get("default_port", default=AppConfig.get("listening_port", "Connections")),
                         route=HttpDeliveringServer.get_route_for_script(script_dest_all))
 
                     Printer.print(download_payload, colorized=False)

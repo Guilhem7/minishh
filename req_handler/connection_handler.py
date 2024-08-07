@@ -8,6 +8,7 @@ from threading import Thread, Event, Lock
 from utils.print_utils import Printer
 from config.config import AppConfig
 from req_handler.sessions import *
+from req_handler.proxy_forwarder import ProxyForwarder
 
 BUFF_SIZE = 2048
 
@@ -15,6 +16,7 @@ class SessionObserver:
     def __init__(self):
         self.connections = {}
         self.potential_connections = {}
+        self.http_session = []
         self.readable_list = []
         self.download_server = None
 
@@ -59,14 +61,26 @@ class SessionObserver:
             Printer.err("No such session available...")
 
     def notify(self, session):
-        if(session.status == SessionStatus.Initialized):
+        """
+        Notify handle the set up of a session once it has been analysed
+         .A session can be Initialized --> Reverse shell
+         .A session can be a Http Request --> Download/Upload a file
+         .A session can be any other weird connection --> nc <server> <port>
+        """
+        if session.status == SessionStatus.Initialized:
             Printer.log("Session seems valid, adding it")
             self.connections[session.get_connection()] = session.build()
-            self.connections[session.get_connection()].set_download_server(self.download_server)
             self.connections[session.get_connection()].attach(self) # Attaching to observer
+            self.connections[session.get_connection()].set_download_server(self.download_server)
+            self.connections[session.get_connection()].run_config_script()
+
             del self.potential_connections[session.get_connection()]
 
-            self.connections[session.get_connection()].run_config_script()
+        elif session.status == SessionStatus.Http:
+            # self._forwarder.forward(session.conn)
+            # self.remove_from_readable(session.get_connection())
+            # del self.potential_connections[session.get_connection()]
+            pass
 
         else:
             Printer.err("Session not valid, discarding")
@@ -93,6 +107,8 @@ class ConnectionHandler(Thread):
         self.state_conn_lock = Lock()
         self.ProxyCo = ConnectionProxy()
         self._observer = SessionObserver()
+        self._forwarder = ProxyForwarder(("127.0.0.1", int(AppConfig.get("port", "HttpServer"))),
+                                         buff_size=8192)
         self.has_started = Event()
 
     def __str__(self):
@@ -124,8 +140,11 @@ class ConnectionHandler(Thread):
 
     def start_listening(self):
         try:
-            self.s.bind(('0.0.0.0', self.port))
+            # Allow to reuse Addr and Port
             self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+
+            self.s.bind(('0.0.0.0', self.port))
             self.s.listen(self.max_conn)
 
             self.add_in_readable(self.s)
@@ -140,7 +159,6 @@ class ConnectionHandler(Thread):
             self.has_started.set()
             Printer.err(e)
             return False
-
 
     def run(self):
         if(ConnectionHandler.is_listening):
@@ -170,23 +188,27 @@ class ConnectionHandler(Thread):
         self._observer.empty_readable()
         self.s.close()
 
-
     def handle_read(self, sock_fd):
         if sock_fd is self.s:
             conn, addr = sock_fd.accept()
-            Printer.crlf().log("New Connection from [blue]{}:{}[/blue]".format(addr[0], addr[1]))
 
-            potential_session = SessionInit(conn)
-            self._observer.add_potential_connection(potential_session)
+            if self._forwarder.isHttp(conn):
+                Printer.vlog("[b green]\[HTTP][/b green] trafic found in socket")
+                self._forwarder.forward(conn)
 
-            potential_session.attach(self._observer)
-            potential_session.start()
+            else:
+                potential_session = SessionInit(conn)
+                self._observer.add_potential_connection(potential_session)
+
+                potential_session.attach(self._observer)
+                potential_session.start()
 
         elif sock_fd in self._observer.readable_list:
             try:
+                session = self.get_connection(sock_fd)
                 data = sock_fd.recv(BUFF_SIZE)
                 if data:
-                    self.ProxyCo.add_msg(self.get_connection(sock_fd), data)
+                    self.ProxyCo.add_msg(session, data)
 
                 else:
                     Printer.crlf().err(f"Connection lost from [red]{sock_fd.getpeername()[0]}[/red]")
@@ -200,6 +222,7 @@ class ConnectionHandler(Thread):
         pass
 
     def stop_listening(self):
+        Printer.vlog("Closing TCP server..")
         with self.state_conn_lock:
             ConnectionHandler.is_listening = False
 
