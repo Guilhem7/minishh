@@ -108,9 +108,11 @@ class SessionInit(SessionUtils, Thread):
         if(cmd is None):
             return
 
+        Printer.vlog(f"Enumerating binaries with: '{cmd}'")
         res = self.command_executor.exec(cmd, timeout=2.5, get_all=True)
         if res:
             for binary in SkeletonShell.get_useful_binaries(shell_type):
+                Printer.vlog(f"Looking for binary {binary} in {res}")
                 if binary in res:
                     self.session_assets.add_binary(binary)
 

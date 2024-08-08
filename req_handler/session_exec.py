@@ -71,7 +71,13 @@ class SessionExec(object):
                 while True:
                     res += self.answer_queue.get(timeout=timeout)
                     Printer.vlog(f"Queued answer: {res}")
-                    if re.match(CmdMaker.PatternForResult, res) is not None:
+                    pos = res.rfind(CmdMaker.Delimiter)
+                    if pos != -1:
+                        res_to_extract = res[pos + len(CmdMaker.Delimiter):]
+                    else:
+                        res_to_extract = res
+
+                    if re.match(CmdMaker.PatternForResult, res_to_extract):
                         full_res = res.split("=====")[-2].lstrip(';')
                         if not(self.maker.command_origin.strip() in full_res.strip()):
                             break

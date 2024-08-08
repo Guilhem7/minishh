@@ -44,7 +44,7 @@ class SkeletonShell:
 
         elif(shell_type is ShellTypes.Basic):
             binary_list = " ".join(binaries)
-            cmd = f'sh -c \'for b in {binary_list};do which $b 2>/dev/null;done\''
+            cmd = f'sh -c \'for b in {binary_list};do type -a $b 2>/dev/null;done\''
 
         elif(shell_type is ShellTypes.Windows):
             binary_list = " ".join(binaries)

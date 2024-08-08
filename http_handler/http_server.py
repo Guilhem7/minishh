@@ -2,7 +2,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from http import HTTPStatus
 from enum import Enum, auto
 from threading import Thread, Event
-from requests_toolbelt.multipart import decoder
 import os
 import requests
 from utils.minishh_utils import MinishhUtils
@@ -10,9 +9,20 @@ from utils.pwsh_utils import ReverseShell
 from utils.print_utils import Printer
 from config.config import AppConfig
 
+CRLF = b"\r\n\r\n"
+
 class ServerStatus(Enum):
     Running = auto()
     Stopped = auto()
+
+class StateDownload(Enum):
+    """
+    Enum used to notify the download status
+    """
+    WAIT_FOR_BOUNDARY = auto()
+    WAIT_FOR_CRLF = auto()
+    WAIT_FOR_END_BOUNDARY = auto()
+
 
 class HttpDeliveringServer(BaseHTTPRequestHandler):
 
@@ -22,6 +32,7 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         self.server_version = "MinishhHttp/0.8"
         self.sys_version = ''
+        self.buff_size = 65536
         super().__init__(*args, **kwargs)
 
     @classmethod
@@ -102,26 +113,71 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
         It works with and without multipart
         """
         try:
+            loot_dir = AppConfig.get("directory", "Download")
+            if not os.path.isdir(loot_dir):
+                raise ValueError("Download dir not found...")
+
+
             content_type = self.headers.get("Content-Type")
-            post_request = self.rfile.read1()
+            file_length = int(self.headers['Content-Length'])
             filename = HttpDeliveringServer.files_to_receive.get(self.path.lstrip("/"))
+            filepath = os.path.join(loot_dir, os.path.basename(filename))
+
             if (content_type is not None and 'boundary=' in content_type and filename):
-                multipart_data = decoder.MultipartDecoder(post_request, content_type)
-                for part in multipart_data.parts:
-                    # Do save file
-                    MinishhUtils.save_file(filename, part.content)
-                    break
+                boundary = content_type.split("boundary=")[-1]
+                beginning = f"--{boundary}\r\n".encode()
+                end_boundary = f"\r\n--{boundary}--".encode()
+                readed_bytes = 0
+
+                state = StateDownload.WAIT_FOR_BOUNDARY
+                state_buffer = b""
+                start_boundary = 0
+
+                with open(filepath, "wb") as f:
+                    while readed_bytes < file_length:
+                        data = self.rfile.read(min(self.buff_size, file_length - readed_bytes))
+                        readed_bytes += len(data)
+
+                        if state is StateDownload.WAIT_FOR_BOUNDARY:
+                            start_boundary = data.find(beginning)
+                            if start_boundary != -1:
+                                state = StateDownload.WAIT_FOR_CRLF
+
+                        if state is StateDownload.WAIT_FOR_CRLF:
+                            crlf_pos = data.find(CRLF)
+                            if crlf_pos != -1:
+                                state = StateDownload.WAIT_FOR_END_BOUNDARY
+                                state_buffer = data[crlf_pos + len(CRLF):]
+
+                        if state is StateDownload.WAIT_FOR_END_BOUNDARY:
+                            if state_buffer:
+                                end_boundary_pos = state_buffer.find(end_boundary)
+                                if end_boundary_pos != -1:
+                                    f.write(state_buffer[:end_boundary_pos])
+                                    break
+
+                                f.write(state_buffer)
+                                state_buffer = b""
+
+                            else:
+                                end_boundary_pos = data.find(end_boundary)
+
+                                if end_boundary_pos != -1:
+                                    Printer.vlog(f"File download ended")
+                                    f.write(data[:end_boundary_pos])
+                                    break
+
+                                f.write(data)
+
+                    Printer.log(f"File saved in [yellow]{filepath}[/yellow]")
 
                 self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Length", "0")
                 self.end_headers()
-
-            elif len(post_request) > 0:
-                self.send_response(HTTPStatus.OK)
-                self.end_headers()
-                MinishhUtils.save_file(filename, post_request)
 
             else:
                 self.send_response(HTTPStatus.NOT_FOUND)
+                self.send_header("Content-Length", "0")
                 self.end_headers()
 
             self.remove_file_upload(self.path.lstrip("/"))
@@ -129,6 +185,9 @@ class HttpDeliveringServer(BaseHTTPRequestHandler):
         except Exception as e:
             # Printer.exception()
             Printer.err(e)
+            self.send_response(HTTPStatus.INTERNAL_SERVER_ERROR)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
             pass
 
     def log_message(self, format, request_proto, status_code, *args):

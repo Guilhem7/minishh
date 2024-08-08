@@ -46,7 +46,6 @@ class ProxyForwarder:
             except Exception:
                 pass
 
-
     def isHttp(self, new_socket):
         """
         Check if the TCP exchange actually contains HTTP
@@ -89,6 +88,7 @@ class ProxyForwarder:
 
         socket_infos = self.connections.get(from_socket)
         request_type = socket_infos["type"]
+        Printer.vlog(socket_infos)
         readed_bytes = 0
         to_send = b""
         while writable_sockets:
@@ -98,7 +98,6 @@ class ProxyForwarder:
                 if not data:
                     raise ConnectionResetError
                 readed_bytes += len(data)
-                Printer.vlog(f"Reading {len(data)} bytes")
                 to_send += data
                 if((request_type == "GET" and data.endswith(b"\r\n\r\n"))
                    or (request_type == "POST" and readed_bytes == socket_infos["size"])):
@@ -106,7 +105,6 @@ class ProxyForwarder:
 
             for wsock_fd in write_list:
                 if to_send:
-                    Printer.vlog(f"Forwarding {len(to_send)} bytes")
                     wsock_fd.send(to_send)
                     to_send = b""
                     if not readable_sockets:
@@ -153,7 +151,6 @@ class ProxyForwarder:
                         if end_headers == -1:
                             return
                         response_infos_size = content_length + end_headers + len(b"\r\n\r\n")
-                        Printer.vlog(f"Response size {response_infos_size}")
                     else:
                         # No content length in response
                         response_infos_size = len(data)

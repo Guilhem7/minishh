@@ -71,8 +71,6 @@ class Main:
          - amsi_bypass_script=amsi.ps1
          - AppConfig.get_and_set_if_not_exists("scripts/amsi.ps1", random_route.log, "Routes")
         """
-        HttpDeliveringServer.init_permanent_route({"test": "../ADTools/KrbRelayUp.exe"})
-
         # Init scripts for windows and linux and create route dynamically if not already set
         all_scripts = []
         all_scripts.extend(MinishhUtils.recover_scripts("amsi_bypass_scripts", "Powershell"))
