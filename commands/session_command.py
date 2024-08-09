@@ -239,7 +239,7 @@ class SessionCommand(AbstractCommand):
         if cmdline is not None:
             if self.shell_type is ShellTypes.Basic:
                 self.command_executor.exec_no_result(cmdline)
-                self.command_executor.exec_no_result(f"tty && type -a stty 2>/dev/null && stty rows {lines} columns {columns}")
+                self.command_executor.exec_no_result(f"tty && type stty 2>/dev/null && stty rows {lines} columns {columns}")
                 self.command_executor.exec_no_result("clear")
                 tty = self.command_executor.exec("tty", timeout=1.0, get_all=True)
                 if not(re.match(r".*/dev/.*", tty)):

@@ -63,9 +63,6 @@ class SessionObserver:
     def notify(self, session):
         """
         Notify handle the set up of a session once it has been analysed
-         .A session can be Initialized --> Reverse shell
-         .A session can be a Http Request --> Download/Upload a file
-         .A session can be any other weird connection --> nc <server> <port>
         """
         if session.status == SessionStatus.Initialized:
             Printer.log("Session seems valid, adding it")
@@ -75,12 +72,6 @@ class SessionObserver:
             self.connections[session.get_connection()].run_config_script()
 
             del self.potential_connections[session.get_connection()]
-
-        elif session.status == SessionStatus.Http:
-            # self._forwarder.forward(session.conn)
-            # self.remove_from_readable(session.get_connection())
-            # del self.potential_connections[session.get_connection()]
-            pass
 
         else:
             Printer.err("Session not valid, discarding")

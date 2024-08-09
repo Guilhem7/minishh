@@ -300,7 +300,14 @@ class Connection:
             self.shell_handler.previous_shell = previous_shell
 
     def run(self):
+        """
+        Interact with the reverse shell here ! If the config variable is set to 'Y', then
+        the message between the reverse shell and the sessions will not be output when
+        the session is not active.
+        """
         self.is_active = True
+        if AppConfig.get("hide_communication", "Connections", "N").upper() == 'Y':
+            self.empty_queue(self._MQ)
         self.flush_queue(self._MQ)
         msg = ""
 

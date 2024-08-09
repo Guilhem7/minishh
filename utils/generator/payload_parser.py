@@ -24,7 +24,7 @@ class PayloadParser:
     """
     def __init__(self):
         self._parsed = None
-        self._parser = argparse.ArgumentParser()
+        self._parser = argparse.ArgumentParser(prog="generate")
         self._parser.add_argument('-t', '--target', default="windows", help='Target to generate a payload for, default: %(default)s, available: linux, windows, powershell')
         self._parser.add_argument('-i', '--ip', help="Ip to use for payload generation")
         self._parser.add_argument('-p', '--port', help="Port to use for payload generation")

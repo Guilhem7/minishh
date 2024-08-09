@@ -83,7 +83,7 @@ class UnixShell(Shell):
             "alias ls='ls --color=always'",
             "alias ll=\"ls -lhas\"",
             "alias c=\"clear\"",
-            f"tty && type -a stty && stty rows {lines} columns {columns}"
+            f"tty && type stty && stty rows {lines} columns {columns}"
         ]
 
         unix_prompt = AppConfig.get("prompt", "Linux")
@@ -99,7 +99,7 @@ class UnixShell(Shell):
         however if the binary is present it must be returned in the response
         """
         binary_list = " ".join(binaries)
-        cmd = f'sh -c \'for b in {binary_list};do type -a $b 2>/dev/null;done\''
+        cmd = f'sh -c \'for b in {binary_list};do type $b 2>/dev/null;done\''
         return cmd
 
 class WindowsShell(Shell):

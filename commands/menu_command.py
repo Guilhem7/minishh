@@ -85,8 +85,17 @@ class MenuCommand(AbstractCommand):
         print()
 
     def execute_sess(self, *sess_number):
+        """
+        Interact with a session, if no index specified, interact with the only
+        session available if any
+        """
+        number_of_sess = len(self.main_menu.socket_server._observer.connections)
         if(len(sess_number) == 0):
-            Printer.err("Usage: sess [yellow]<sess_number>[/yellow]")
+            if number_of_sess == 1:
+                sess = self.main_menu.socket_server.get_session(0)
+                sess.run()
+            else:
+                Printer.err("Usage: sess [yellow]<sess_number>[/yellow]")
 
         else:
             if(sess_number[0].isdigit()):

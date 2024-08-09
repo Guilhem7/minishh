@@ -90,6 +90,9 @@ class Main:
         self.socket_server.set_download_server(self.http_server)
 
     def close_all_sessions(self):
+        """
+        Close all active sessions
+        """
         sessions = list(self.socket_server.get_active_sessions().values())
         if len(sessions):
             Printer.log(f"Closing [red]{len(sessions)}[/red] sessions")
