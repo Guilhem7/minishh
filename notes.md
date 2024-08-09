@@ -1,2 +1,3 @@
 Make the HTTP timeout possible even from a session
-improve the prompt on linux to make color add easier
+Add default upload without name required
+When no session and a new one is created, then auto-enter it

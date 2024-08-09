@@ -20,7 +20,7 @@ class Main:
     """
     def __init__(self):
         super().__init__()
-        self._prompt_menu = Printer.format("[{blue}Menu{reset}] ")
+        self._prompt_menu = Printer.format("\[[blue]Menu[/]] ")
         self.commands = MenuCommand(self)
         self.socket_server = None
         self.http_server = None

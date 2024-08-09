@@ -2,6 +2,7 @@ import sys
 from rich import print as rp
 from rich.console import Console
 from rich.table import Table
+from rich.markup import escape, render as render_markup
 
 class Printer:
     """ Helper for logging output (static methods only)"""
@@ -88,16 +89,10 @@ class Printer:
 
     @staticmethod
     def format(val):
-        return val.format(
-            red       = Printer.ANSI_RED,
-            green     = Printer.ANSI_GREEN,
-            yellow    = Printer.ANSI_YELLOW,
-            lyellow   = Printer.ANSI_LYELLOW,
-            blue      = Printer.ANSI_BLUE,
-            reset     = Printer.ANSI_RESET,
-            underline = Printer.UNDERLINE,
-            bold      = Printer.BOLD
-            )
+        """
+        Format the value from rich to ANSI Code
+        """
+        return Printer.console._render_buffer(Printer.console.render(render_markup(val)))[:-1]
 
     @staticmethod
     def print(val, colorized=True, **kwargs):

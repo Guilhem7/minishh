@@ -63,17 +63,22 @@ class UnixShell(Shell):
 
     @staticmethod
     def get_prompt_command(prompt):
-        if "'" in prompt:
-            Printer.vlog("The prompt config contains unwanted char: (')")
-        if "\\x1b" in prompt:
-            prompt = prompt.replace("\\x1b", '\\e')
+        # if "'" in prompt:
+        #     Printer.vlog("The prompt config contains unwanted char: (')")
+
+        # Tell bash 0-length chars
+        prompt = prompt.replace("[", "\\\[[").replace("]", "]\\\]")
+
+        prompt = Printer.format(prompt)
+        if "\x1b" in prompt:
+            prompt = prompt.replace("\x1b", '\\e')
         return f"export PS1=\"{prompt} \""
 
     @staticmethod
     def default_command():
         columns, lines = os.get_terminal_size()
         default_commands = [
-            "export HISTFILE=/dev/null",
+            " export HISTFILE=/dev/null",
             "export TERM=xterm-256color",
             "alias ls='ls --color=always'",
             "alias ll=\"ls -lhas\"",

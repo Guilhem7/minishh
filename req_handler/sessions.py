@@ -187,7 +187,7 @@ class Session(SessionUtils):
         self.status = SessionStatus.Initialized
         self.session_assets = sess_assets
         self.connection = Connection(conn, self.session_assets.shell_type)
-        self.prompt = Printer.format("{underline}Session{reset}({yellow}" + self.connection.host + "{reset})> ")
+        self.prompt = Printer.format("[u]Session[/u]([yellow]" + self.connection.host + "[/yellow])> ")
         self.commands = SessionCommand(self)
         self.download_server = None
 
@@ -305,6 +305,7 @@ class Connection:
         msg = ""
 
         try:
+            self.conn.send(b"\n")
             self.init_shell()
             while self.is_active:
                 CMD = self.shell_handler.get_input()

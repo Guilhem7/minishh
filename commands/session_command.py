@@ -274,12 +274,16 @@ class SessionCommand(AbstractCommand):
         payload = ClassThatKnowsPayload.get_payload_for('upload', shell_type, route)
         send(payload)
         """
-        if len(args) != 2:
-            Printer.err("Missing argument to the [yellow]upload[/yellow] function")
+        if len(args) != 2 and len(args) != 1:
+            Printer.err("Usage: [yellow]upload[/] <file_to_upload> (<where_to_upload>)")
         else:
             filename = MinishhUtils.get_file(args[0])
             if filename is not None:
-                where = args[1]
+                if len(args) == 1:
+                    Printer.log(f"Uploading [yellow]{filename}[/] in current directory")
+                    where = os.path.basename(filename)
+                else:
+                    where = args[1]
                 route = self.__create_random_route()
                 try:
                     self.session_in_use.download_server.notify_download(route, filename)
