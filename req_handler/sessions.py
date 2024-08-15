@@ -72,10 +72,9 @@ class SessionUtils:
     def get_connection(self):
         return self.conn
 
-    def run_default_command(self, shell_type):
+    def run_default_command(self, shell):
         self.command_executor.exec_all_no_result(
-            ShellFactory.Shells[shell_type].default_command(),
-            shell_type,
+            shell.default_command(),
             wait=0.2)
 
     def is_waiting(self):
@@ -94,9 +93,10 @@ class SessionInit(SessionUtils, Thread):
         SessionUtils.__init__(self, conn)
         Thread.__init__(self)
         self.session_assets = SessionAssets()
+        self.shell = None
 
     def build(self):
-        return Session(self.conn, self.session_assets)
+        return Session(self.conn, self.session_assets, self.shell)
 
     def is_session_valid(self):
         check_value = ObfUtil.get_random_string(32)
@@ -108,11 +108,11 @@ class SessionInit(SessionUtils, Thread):
         if(cmd is None):
             return
 
-        Printer.vlog(f"Enumerating binaries with: '{cmd}'")
+        Printer.dbg(f"Enumerating binaries with: '{cmd}'")
         res = self.command_executor.exec(cmd, timeout=2.5, get_all=True)
         if res:
             for binary in SkeletonShell.get_useful_binaries(shell_type):
-                Printer.vlog(f"Looking for binary {binary} in {res}")
+                Printer.dbg(f"Looking for binary {binary} in {res}")
                 if binary in res:
                     self.session_assets.add_binary(binary)
 
@@ -139,6 +139,16 @@ class SessionInit(SessionUtils, Thread):
         """Wrapper for the set_shell_type method"""
         self.session_assets.set_shell_type(shell_type)
 
+    def is_shell_type_tty(self, shell_type):
+        """
+        Check if the current shell is a tty or not
+        """
+        if shell_type & Shells.Basic:
+            answer = self.command_executor.exec("tty", timeout=0.8, get_all=False)
+            if re.match(r".*/dev/.*", answer, re.DOTALL):
+                return True
+        return False
+
     def run(self):
         """
         Function to init a session. This part is here to identify the kind of
@@ -156,9 +166,15 @@ class SessionInit(SessionUtils, Thread):
                 shell_type = self.get_shell_type(SkeletonShell.recover_shell_type_from_prompt(first_answer))
                 Printer.log(f"Identified Shell of type: [bold]{shell_type}[/bold]")
                 self.set_shell_type(shell_type)
-                self.run_default_command(shell_type)
+
                 self.enumerate_binary(shell_type)
-                self.session_assets.set_current_user(self.command_executor.exec("whoami", timeout=1.5, get_all=True))
+                self.session_assets.set_current_user(self.command_executor.exec("whoami",
+                                                                                timeout=1.5,
+                                                                                get_all=True))
+                is_tty = self.is_shell_type_tty(shell_type)
+                self.shell = ShellFactory.build(shell_type, tty=is_tty)
+
+                self.run_default_command(self.shell)
                 self.status = SessionStatus.Initialized
             else:
                 self.status = SessionStatus.Invalid
@@ -174,7 +190,7 @@ class Session(SessionUtils):
 
     EXIT_COMMANDS = ["x", "quit", "exit"]
 
-    def __init__(self, conn, sess_assets):
+    def __init__(self, conn, sess_assets, shell):
         """
         self.status : SessionStatus : status of the current session
         self.session_assets : SessionAssets : Link to the current session attributes
@@ -186,7 +202,7 @@ class Session(SessionUtils):
         super().__init__(conn)
         self.status = SessionStatus.Initialized
         self.session_assets = sess_assets
-        self.connection = Connection(conn, self.session_assets.shell_type)
+        self.connection = Connection(conn, shell)
         self.prompt = Printer.format("[u]Session[/u]([yellow]" + self.connection.host + "[/yellow])> ")
         self.commands = SessionCommand(self)
         self.download_server = None
@@ -220,13 +236,30 @@ class Session(SessionUtils):
     def show_session_info(self):
         Printer.table_show(
             {"Ip Address": "green", "Shell in Use": "yellow", "Whoami": "red"},
-            [(self.connection.host, self.connection.shell_type.name, self.session_assets.current_user)],
+            [(self.connection.host, self.connection.shell_handler.shell_type.name, self.session_assets.current_user)],
             "Session info")
 
     def notify_close(self):
         """Notify the observer that the session is closed"""
         for obs in self._observers:
             obs.notify_close(self)
+
+    def upgrade(self):
+        """
+        Upgrade current shell to tty
+        """
+        if not self.connection.shell_handler.is_tty:
+            self.connection.shell_handler.set_tty()
+            self.run_default_command(self.connection.shell_handler)
+        else:
+            Printer.verr(f"Trying to upgrade an already tty shell")
+
+    def downgrade(self):
+        """
+        Downgrading the shell
+        """
+        self.connection.shell_handler.reset_tty()
+        self.command_executor.exec_no_result(self.connection.shell_handler.reset_prompt())
 
     def run_config_script(self):
         """Run the default command from config"""
@@ -243,7 +276,7 @@ class Session(SessionUtils):
     def close(self, with_exit=True):
         try:
             if(with_exit):
-                self.command_executor.exec_no_result("exit", shell_type=self.connection.shell_type)
+                self.command_executor.exec_no_result("exit")
         except Exception:
             pass
 
@@ -252,16 +285,22 @@ class Session(SessionUtils):
 
 class Connection:
 
-    def __init__(self, conn, shell_type, is_active = False):
+    def __init__(self, conn, shell, is_active = False):
         self.conn = conn
         self.is_active = is_active
         self._MQ = queue.Queue()
         self._host, self._port = self.conn.getpeername()
-        self.shell_type = shell_type
-        self.shell_handler = ShellFactory.build(self.shell_type)
+        self.shell_handler = shell
 
     def get_queue(self):
         return self._MQ
+
+    @property
+    def shell_type(self):
+        """
+        Return the type of shell associated to the connection
+        """
+        return self.shell_handler.get_type()
 
     @property
     def host(self):
@@ -283,21 +322,8 @@ class Connection:
         self.shell_handler.init()
 
     def reset_shell(self):
-        if(self.shell_handler is not None):
+        if self.shell_handler is not None:
             self.shell_handler.reset_shell()
-
-    def change_shell(self, shell_type):
-        previous_shell = self.shell_type
-
-        if previous_shell is ShellTypes.Pty:
-            self.shell_type = self.shell_handler.previous_shell if self.shell_handler.previous_shell else shell_type
-
-        else:
-            self.shell_type = shell_type
-        
-        self.shell_handler = ShellFactory.build(self.shell_type)
-        if self.shell_type is ShellTypes.Pty:
-            self.shell_handler.previous_shell = previous_shell
 
     def run(self):
         """
@@ -320,6 +346,7 @@ class Connection:
                     self.conn.send(CMD)
 
         except Exception as e:
+            Printer.dbg(e)
             pass
 
         except KeyboardInterrupt:

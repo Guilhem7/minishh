@@ -264,7 +264,7 @@ class HttpServer(Thread):
         try:
             self.httpd = HTTPServer((self.host, self.port), HttpDeliveringServer)
             self.server_status = ServerStatus.Running
-            Printer.log(f"Http server started on port {self.port}")
+            Printer.log(f"Http server started on {self.host}:{self.port}")
 
         except Exception as e:
             self.server_status = ServerStatus.Stopped

@@ -1,5 +1,6 @@
 """Entry point for the program"""
 import sys
+import argparse
 from time import sleep
 from rich.traceback import install
 from http_handler.http_server import HttpServer, HttpDeliveringServer
@@ -133,6 +134,16 @@ class Main:
             self.http_server.stop_listening()
             self.http_server.join()
 
+def parse_args():
+    """
+    Parse arguments and return the namespace associated
+    """
+    parser = argparse.ArgumentParser(prog="minishh")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Increase verbosity")
+    parser.add_argument("-d", "--debug", action="store_true",
+                        help="Used for debugging, showing communications between Minissh and Remote")
+
+    return parser.parse_args()
 
 if __name__ == '__main__':
     install(show_locals=True)
@@ -145,8 +156,11 @@ if __name__ == '__main__':
         Printer.err(e)
         exit(1)
 
-    if(len(sys.argv) == 2 and sys.argv[1] in ["-v", "--verbose"]):
+    options = parse_args()
+    if options.verbose:
         Printer.verbose = True
+    if options.debug:
+        Printer.debug = True
 
     menu = Main()
     menu.init_options()

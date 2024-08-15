@@ -184,7 +184,7 @@ class ConnectionHandler(Thread):
             conn, addr = sock_fd.accept()
 
             if self._forwarder.isHttp(conn):
-                Printer.vlog("[b green]\[HTTP][/b green] trafic found in socket")
+                Printer.vlog("[green]\[HTTP][/green] trafic found in socket")
                 self._forwarder.forward(conn)
 
             else:

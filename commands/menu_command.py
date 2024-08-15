@@ -1,3 +1,4 @@
+import os
 from commands.abstract_command import AbstractCommand
 from utils.minishh_utils import MinishhUtils
 from utils.pwsh_utils import PwshUtils, ObfUtil
@@ -21,11 +22,13 @@ class MenuCommand(AbstractCommand):
                             "usage": "Usage: help ?<[bold yellow]command[/bold yellow]>"},
             "generate" : {"help": "Generate a reverse shell payload", "usage": "Use [yellow]generate -h[/yellow] to see more information on this command"},
             "list"     : {"help": "List the current sessions available"},
+            "reload"   : {"help": "Reload the configuration"},
             "servers"  : {"help": "Print the running servers"},
             "sess"     : {"help": "Interact with a session",
                             "usage": "Usage: sess <[bold blue]number[/bold blue]>"},
+            "show"     : {"help": "Show some of the configuration values"},
             "set"      : {"help": "Set a key to a value",
-                            "usage": "set <[bold blue]key[/bold blue]> <[bold yellow]val[/bold yellow]>\nKeys available: ip, port, auto_upgrade"},
+                          "usage": "set <[bold blue]key[/bold blue]> <[bold yellow]val[/bold yellow]>\nKeys available: ip, port, auto_upgrade"},
             "exit"     : {"help": "Exit the program"}
         }
 
@@ -89,7 +92,7 @@ class MenuCommand(AbstractCommand):
         Interact with a session, if no index specified, interact with the only
         session available if any
         """
-        number_of_sess = len(self.main_menu.socket_server._observer.connections)
+        number_of_sess = len(self.main_menu.socket_server.get_active_sessions())
         if(len(sess_number) == 0):
             if number_of_sess == 1:
                 sess = self.main_menu.socket_server.get_session(0)
@@ -105,6 +108,13 @@ class MenuCommand(AbstractCommand):
 
             else:
                 Printer.err("An integer is required")
+
+    def execute_reload(self, *args):
+        """
+        Reload the configuration from the config.ini file
+        """
+        AppConfig.init_config()
+        Printer.msg(f"[green]Configuration has been reloaded[/green]")
 
     def execute_list(self, *args):
         """List all sessions available"""
@@ -144,7 +154,6 @@ class MenuCommand(AbstractCommand):
         Printer.log(f"{var} is now set to [yellow]{value}[/yellow] in section [blue]{target_section}[/blue]")
         return 0
 
-
     def __set_key(self, key, values):
         """Protected function that forward values to the setter associated"""
         if(key == "default_ip_address" or key == "default_port"):
@@ -165,6 +174,49 @@ class MenuCommand(AbstractCommand):
 
         else:
             Printer.err("Missing arguments for set function")
+
+    def execute_show(self, *args):
+        """
+        Show some key variable of the configuration
+        """
+        none_value = "[red]None[/red]"
+        Printer.console.rule("Configuration")
+        # Directories
+        Printer.log("Download directory: [yellow]{}[/yellow]".format(AppConfig.get("directory", "Download")))
+        Printer.log("Script directory: [yellow]{}[/yellow]".format(AppConfig.get("directory", "Script")))
+        Printer.print("")
+
+        # Powershell
+        Printer.log("AMSI Bypass scripts: [b]{}[/b]".format(AppConfig.get("amsi_bypass_scripts", "Powershell", none_value)))
+        Printer.log("Scripts auto loaded before spawning shell: [b]{}[/b]".format(
+            AppConfig.get("on_before_shell", "Powershell", none_value))
+        )
+        Printer.log("Scripts auto loaded once shell has been recovered: [b]{}[/b]".format(
+            AppConfig.get("auto_load_scripts", "Powershell", none_value))
+        )
+        Printer.log("Shell will be auto upgraded: [b]{}[/b]".format(
+            AppConfig.get("auto_upgrade", "Powershell", none_value))
+        )
+        Printer.log("Default prompt to use: '{}'".format(
+            Printer.escape(AppConfig.get("prompt", "Powershell", none_value)))
+        )
+        Printer.print("")
+
+        # Linux
+        Printer.log("Script auto loaded before spawning shell: [b]{}[/b]".format(
+            AppConfig.get("on_before_shell", "Linux", none_value))
+        )
+        Printer.log("Scripts auto loaded once shell has been recovered: [b]{}[/b]".format(
+            AppConfig.get("auto_load_scripts", "Linux", none_value))
+        )
+        Printer.log("Shell will be auto upgraded: [b]{}[/b]".format(
+            AppConfig.get("auto_upgrade", "Linux", none_value))
+        )
+        Printer.log("Default prompt to use: '{}'".format(
+            Printer.escape(AppConfig.get("prompt", "Linux", none_value)))
+        )
+        Printer.print("")
+
 
     def execute_generate(self, *args):
         """Generate a payload, see utils/generator/__init__.py for more details"""

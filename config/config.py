@@ -1,5 +1,6 @@
 import os
 from configparser import ConfigParser
+from utils.print_utils import Printer
 
 class AppConfig:
     """
@@ -24,9 +25,13 @@ class AppConfig:
 
     @classmethod
     def get(cls, var, section="UserSection", default=""):
-        """Get a config variable, do not pass an unknown section"""
+        """Get a config variable"""
+        if section not in cls._SystemConfig.sections():
+            Printer.verr(f"Section {section} not found in config")
+            return default
+
         res = cls._SystemConfig[section].get(var)
-        if res is not None:
+        if res:
             return res
         return default
 

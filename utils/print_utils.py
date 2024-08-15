@@ -19,6 +19,14 @@ class Printer:
     console = Console()
 
     verbose = False
+    debug = False
+
+    @staticmethod
+    def escape(m):
+        """
+        Escape a value for rich
+        """
+        return escape(m)
 
     @staticmethod
     def log(m, end="\n"):
@@ -36,9 +44,10 @@ class Printer:
         else:
             rp("[red bold][-][/red bold] {}".format(m), end=end, file=sys.stderr)
 
-    @staticmethod
-    def dbg(m, end="\n"):
-        rp("[[yellow bold]>[/yellow bold]] {}".format(m), end=end)
+    @classmethod
+    def dbg(cls, m, end="\n"):
+        if Printer.debug:
+            rp("[[yellow bold]>[/yellow bold]] {}".format(m), end=end)
 
     @staticmethod
     def crlf():
@@ -82,17 +91,17 @@ class Printer:
 
         print("[{}>{}]".format("="*PERCENTAGE, " "*(BAR_LENGTH - PERCENTAGE)), end="\r")
 
-    @staticmethod
-    def pad():
+    @classmethod
+    def pad(cls):
         print("  ", end="")
-        return Printer
+        return cls
 
-    @staticmethod
-    def format(val):
+    @classmethod
+    def format(cls, val):
         """
         Format the value from rich to ANSI Code
         """
-        return Printer.console._render_buffer(Printer.console.render(render_markup(val)))[:-1]
+        return cls.console._render_buffer(cls.console.render(render_markup(val)))[:-1]
 
     @staticmethod
     def print(val, colorized=True, **kwargs):

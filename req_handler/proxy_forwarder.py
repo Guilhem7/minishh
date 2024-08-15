@@ -88,7 +88,7 @@ class ProxyForwarder:
 
         socket_infos = self.connections.get(from_socket)
         request_type = socket_infos["type"]
-        Printer.vlog(socket_infos)
+        Printer.vlog(f"[green]\[HTTP][/] Received [b u]{request_type}[/b u] request")
         readed_bytes = 0
         to_send = b""
         while writable_sockets:

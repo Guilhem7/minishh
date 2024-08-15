@@ -1,7 +1,7 @@
 import re
 import base64
 from utils.pwsh_utils import PwshUtils
-from shell_utils.shell_factory import ShellTypes
+from shell_utils.shell_factory import Shells
 
 class SkeletonShell:
     """
@@ -9,15 +9,15 @@ class SkeletonShell:
     """
 
     IDENTIFICATION_COMMANDS_DICT = {
-                                    ShellTypes.Basic      : {"cmd": "PS1='' && ls /etc/passwd", "expect": "/etc/passwd"},
-                                    ShellTypes.Powershell : {"cmd": "[System.Environment]::OSVersion.VersionString", "expect": "microsoft windows"},
-                                    ShellTypes.Windows    : {"cmd": "VER", "expect": "microsoft windows"}
+                                    Shells.Basic      : {"cmd": "PS1='' && ls /etc/passwd", "expect": "/etc/passwd"},
+                                    Shells.Powershell : {"cmd": "[System.Environment]::OSVersion.VersionString", "expect": "microsoft windows"},
+                                    Shells.Windows    : {"cmd": "VER", "expect": "microsoft windows"}
                                     }
 
     USEFUL_BINARIES          = {
-                                    ShellTypes.Basic      : ["python3", "python", "socat", "bash", "wget", "curl", "stty", "timeout", "xxd", "zip", "tar", "base64"],
-                                    ShellTypes.Powershell : ["wget", "curl", "certutil", "xor", "tar", "download"],
-                                    ShellTypes.Windows    : ["wget", "curl", "certutil", "tar"]
+                                    Shells.Basic      : ["python3", "python", "socat", "bash", "wget", "curl", "stty", "timeout", "xxd", "zip", "tar", "base64"],
+                                    Shells.Powershell : ["wget", "curl", "certutil", "xor", "tar"],
+                                    Shells.Windows    : ["wget", "curl", "certutil", "tar"]
                                 }
 
     DUMMY_COMMAND = "echo 1337"
@@ -38,15 +38,15 @@ class SkeletonShell:
     def enumerate_binary_command(shell_type):
         binaries = SkeletonShell.USEFUL_BINARIES.get(shell_type)
         cmd = ""
-        if(shell_type is ShellTypes.Powershell):
+        if shell_type & Shells.Powershell:
             binary_list = '"' + '","'.join(binaries) + '"'
             cmd = 'Do{ foreach($b in ' + binary_list + '){if(Get-Command $b -errorAction SilentlyContinue){echo $b;}} } While($false)'
 
-        elif(shell_type is ShellTypes.Basic):
+        elif shell_type & Shells.Basic:
             binary_list = " ".join(binaries)
             cmd = f'sh -c \'for b in {binary_list};do type $b 2>/dev/null;done\''
 
-        elif(shell_type is ShellTypes.Windows):
+        elif shell_type & Shells.Windows:
             binary_list = " ".join(binaries)
             cmd = f'echo off & (for %c IN (' + binary_list + f') DO (WHERE %c 2>nul)) & echo on'
 
@@ -58,31 +58,31 @@ class SkeletonShell:
     @staticmethod
     def recover_shell_type_from_prompt(answer):
         """
-        Try to predict the shell inuse by looking at the prompt
+        Try to predict the shell in use by looking at the prompt
         ```python
         >>> prompt_ps = "...\n PS C:\\Users\\svc_example\\Desktop > "
         >>> prompt_win = "[Microsoft Windows]\nC:\\Users\\svc_example\\Desktop > "
         >>> prompt_lin = "...$"
         >>>
         >>> SkeletonShell.recover_shell_type_from_prompt(prompt_ps)[0]
-        ShellTypes.Powershell
+        Shells.Powershell
 
         >>> SkeletonShell.recover_shell_type_from_prompt(prompt_win)[0]
-        ShellTypes.Windows
+        Shells.Windows
         
         >>> SkeletonShell.recover_shell_type_from_prompt(prompt_lin)[0]
-        ShellTypes.Basic
-        
+        Shells.Basic
+
         >>> 
         """
         if re.search(WindowsShellPrompt.PS_PROMPT, answer):
-            return [ShellTypes.Powershell, ShellTypes.Windows, ShellTypes.Basic]
+            return [Shells.Powershell, Shells.Windows, Shells.Basic]
 
         elif re.search(WindowsShellPrompt.WIN_PROMPT, answer):
-            return [ShellTypes.Windows, ShellTypes.Powershell, ShellTypes.Basic]
+            return [Shells.Windows, Shells.Powershell, Shells.Basic]
 
         else:
-            return [ShellTypes.Basic, ShellTypes.Windows, ShellTypes.Powershell]
+            return [Shells.Basic, Shells.Windows, Shells.Powershell]
 
 
 class WindowsShellPrompt:
